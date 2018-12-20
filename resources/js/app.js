@@ -189,6 +189,15 @@ const App = new Vue({
         }
       }
     });
+
+    var scroll_timer = setInterval(function() {
+      Vue.nextTick(function() {
+        $('#messages').scrollTop(1E10);
+        if ($('#messages').scrollTop() + $('#messages').innerHeight() >= $('#messages')[0].scrollHeight) {
+          clearInterval(scroll_timer);
+        }
+      });
+    }, 100);
   },
   watch: {
     messages: function() {

@@ -13117,7 +13117,7 @@ img.chat-markup {
 }
 
 .chat-markup a:hover {
-  text-decoration: underline;
+  text-decoration: underline !important;
 }
 
 .chat-markup .mention {
