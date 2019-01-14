@@ -964,8 +964,13 @@ if (App.logged_in && document.getElementById('messages')) {
      .listen('UserUpdate', (e) => {
         console.log(e.user);
         Vue.set(App.users, App.users.findIndex((user_find => user_find.id == e.user.id)), e.user);
-        App.states.account.avatar = App.states.account.avatar + '?' + Date.now();
-        $(".avatar:not(#avatar-upload)").attr('src', App.states.account.avatar);
+        var src = $(".avatar[data-user_id='" + e.user.id + "']").attr('src');
+        if (src.indexOf('?') > 0) {
+          src = src.substring(0, src.indexOf('?')) + '?' + Date.now();
+        } else {
+          src = src + '?' + Date.now();
+        }
+        $(".avatar[data-user_id='" + e.user.id + "']").attr('src', src);
         if (e.user.id == App.current_user.id) {
           App.current_user.status = e.user.status;
           App.current_user.username = e.user.username;
