@@ -41551,22 +41551,15 @@ var App = new Vue({
       }
     });
 
-    var scroll_timer = setInterval(function () {
-      Vue.nextTick(function () {
-        $('#messages').scrollTop(1E10);
-        if ($('#messages').scrollTop() + $('#messages').innerHeight() >= $('#messages')[0].scrollHeight) {
-          clearInterval(scroll_timer);
-        }
-      });
-    }, 100);
+    this.scrollBottomMessages();
   },
   watch: {
     messages: function messages() {
       var App_this = this;
       var new_message = this.messages[this.messages.length - 1];
       Vue.nextTick(function () {
-        if (App_this.messages_bottom) {
-          $('#messages').scrollTop($('#messages')[0].scrollHeight);
+        if (App_this.messages_bottom && new_message.channel_id == App_this.states.current_channel) {
+          App_this.scrollBottomMessages();
         }
       });
     },
@@ -41614,7 +41607,7 @@ var App = new Vue({
   },
   computed: {
     messages_bottom: function messages_bottom() {
-      return this.states.messages.scroll.height - this.states.messages.scroll.position == this.states.messages.scroll.outer_height;
+      return this.states.messages.scroll.outer_height + this.states.messages.scroll.position == this.states.messages.scroll.height;
     },
     // Computed to sort users by username
     users_sorted: function users_sorted() {
@@ -41711,6 +41704,16 @@ var App = new Vue({
     }
   },
   methods: {
+    // Scroll to bottom of messages container
+    scrollBottomMessages: function scrollBottomMessages() {
+      var scrollTimer = setInterval(function () {
+        $('#messages').scrollTop(1E10);
+      }, 100);
+
+      setTimeout(function () {
+        clearInterval(scrollTimer);
+      }, 1000);
+    },
     // Method to toggle popover state
     togglePopover: function togglePopover(data) {
       var App_this = this;
@@ -42305,14 +42308,18 @@ function listenToChannel(channel_id) {
 if (App.logged_in && document.getElementById('messages')) {
   // Detect scroll on messages container
   $('#messages').scroll(function () {
-    App.states.messages.scroll.position = $('#messages').scrollTop();
+    Vue.nextTick(function () {
+      App.states.messages.scroll.position = $('#messages')[0].scrollTop;
+      App.states.messages.scroll.height = $('#messages')[0].scrollHeight;
+      App.states.messages.scroll.outer_height = $('#messages').outerHeight();
+    });
+  });
+
+  Vue.nextTick(function () {
+    App.states.messages.scroll.position = $('#messages')[0].scrollTop;
     App.states.messages.scroll.height = $('#messages')[0].scrollHeight;
     App.states.messages.scroll.outer_height = $('#messages').outerHeight();
   });
-
-  App.states.messages.scroll.position = $('#messages')[0].scrollTop;
-  App.states.messages.scroll.height = $('#messages')[0].scrollHeight;
-  App.states.messages.scroll.outer_height = $('#messages').outerHeight();
 
   // Join presence channel through Laravel Echo
   Echo.join('presence').here(function (users) {
@@ -82904,6 +82911,7 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
           url = document.createElement("a");
           url.setAttribute("target", "_blank");
           url.setAttribute("rel", "noopener noreferrer");
+          url.setAttribute("href", URLs[i]);
           url.appendChild(document.createTextNode(URLs[i]));
 
           message.appendChild(url);
