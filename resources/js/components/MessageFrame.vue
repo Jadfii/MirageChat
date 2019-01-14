@@ -71,6 +71,7 @@
                 url = document.createElement("a");
                 url.setAttribute("target", "_blank");
                 url.setAttribute("rel", "noopener noreferrer");
+                url.setAttribute("href", URLs[i]);
                 url.appendChild(document.createTextNode(URLs[i]));
 
                 message.appendChild(url);
