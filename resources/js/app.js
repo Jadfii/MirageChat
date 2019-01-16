@@ -505,7 +505,7 @@ const App = new Vue({
     // Function to enable user to edit a message of theirs
     editMessage: function(e) {
       var message_id = parseInt($(e.target).closest(".chat-message").attr("data-message_id"));
-      if (this.states.modal.item && this.states.modal.item.hasOwnProperty("content")) {
+      if (this.states.modal.item && this.states.modal.item.hasOwnProperty("content") && this.states.modal.item.message_id == message_id) {
         var modal = $('#message-edit-modal');
         var content = modal.find("textarea").val().trim();
 

@@ -773,6 +773,10 @@ form, .form-wrapper {
   border: 1px solid var(--tertiary-bg-colour);
 }
 
+.form-group-alt textarea {
+  overflow: hidden;
+}
+
 .form-group-alt label, .form-group-alt label.active {
   position: relative;
   left: 0;

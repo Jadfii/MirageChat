@@ -109,7 +109,7 @@
                 <template slot="body">
                   <div class="form-group form-group-alt">
                       <label for="message_content">Message</label>
-                      <textarea v-if="states.modal.item" :value="states.modal.item.content" name="message_content" class="inline-scroll scroll-light form-control form-field" autocomplete="off"></textarea>
+                      <textarea v-if="states.modal.item" :value="states.modal.item.content" rows="3" style="height: auto;" name="message_content" class="inline-scroll scroll-light form-control form-field" autocomplete="off"></textarea>
                       <div class="form-error"></div>
                   </div>
                 </template>
