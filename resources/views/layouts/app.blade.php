@@ -59,10 +59,6 @@
                 </div>
             </transition>
 
-            @if (session('status'))
-              <modal ref="modal" :type="'plain'" :title="'Success'" :message="'{{ session('status') }}'"></modal>
-            @endif
-
             <form id="logout-form" action="{{ route('logout') }}" method="POST" style="display: none;">
                 @csrf
 
@@ -109,6 +105,20 @@
                 </template>
             </form-modal>
 
+            <form-modal :title="'Edit message'" :message="''" :id="'message-edit-modal'" :func="editMessage">
+                <template slot="body">
+                  <div class="form-group form-group-alt">
+                      <label for="message_content">Message</label>
+                      <textarea v-if="states.modal.item" :value="states.modal.item.content" rows="3" style="height: auto;" name="message_content" class="inline-scroll scroll-light form-control form-field" autocomplete="off"></textarea>
+                      <div class="form-error"></div>
+                  </div>
+                </template>
+                <template slot="footer">
+                    <button type="submit" class="btn btn-primary btn-confirm">Confirm</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                </template>
+            </form-modal>
+
             <v-popover
               v-if="states.popover.open"
               :style="tooltip_location"
@@ -133,6 +143,9 @@
                             <div class="settings-nav-heading">
                               <h3>My Account</h3>
                               <li v-on:click="states.settings.active_tab = 'account_details'" :class="{ active: states.settings.active_tab == 'account_details' }"><a>Account Details</a></li>
+                            </div>
+                            <div class="settings-nav-heading">
+                              <li v-on:click="states.settings.active_tab = 'app_information'" :class="{ active: states.settings.active_tab == 'app_information' }"><a>App Information</a></li>
                             </div>
                             <div class="settings-nav-heading">
                               <li onclick="event.preventDefault();document.getElementById('logout-form').submit();"><a class="bad">Sign Out</a></li>
@@ -224,6 +237,15 @@
                                             </div>
                                         </div>
                                       </div>
+                                  </settings-frame>
+                                </div>
+                            </div>
+                            <div class="settings-body" :ref="'app_information'" v-show="isActiveTab('app_information')">
+                                <div class="heading-body">
+                                  <h4 class="heading-title">App Information</h4>
+                                  <settings-frame>
+                                      <p><b>Version: </b>{{ Version::version() }}</p>
+                                      <p><b>Build: </b>{{ Version::build() }}</p>
                                   </settings-frame>
                                 </div>
                             </div>

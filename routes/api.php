@@ -23,6 +23,7 @@ Route::prefix('messages')->group(function () {
 
     Route::delete('{message}', 'MessageController@delete');
 
+    Route::put('{message}', 'MessageController@update');
     Route::put('{message}/read', 'MessageController@read');
 
     Route::get('/', 'MessageController@index');

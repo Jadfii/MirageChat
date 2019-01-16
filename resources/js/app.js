@@ -189,14 +189,16 @@ const App = new Vue({
         }
       }
     });
+
+    this.scrollBottomMessages();
   },
   watch: {
     messages: function() {
       var App_this = this;
       var new_message = this.messages[this.messages.length - 1];
       Vue.nextTick(function() {
-        if (App_this.messages_bottom) {
-          $('#messages').scrollTop($('#messages')[0].scrollHeight);
+        if (App_this.messages_bottom && new_message.channel_id == App_this.states.current_channel) {
+          App_this.scrollBottomMessages();
         }
       });
     },
@@ -218,6 +220,9 @@ const App = new Vue({
     },
     'states.typing.focused': function() {
       var App_this = this;
+    },
+    'states.modal.item': function() {
+      autosize($('textarea'));
     },
     'window.width': function() {
       if (this.window.width <= 768) {
@@ -244,7 +249,7 @@ const App = new Vue({
   },
   computed: {
     messages_bottom: function() {
-      return this.states.messages.scroll.height - this.states.messages.scroll.position == this.states.messages.scroll.outer_height;
+      return this.states.messages.scroll.outer_height + this.states.messages.scroll.position == this.states.messages.scroll.height;
     },
     // Computed to sort users by username
     users_sorted: function() {
@@ -339,6 +344,16 @@ const App = new Vue({
     }
   },
   methods: {
+    // Scroll to bottom of messages container
+    scrollBottomMessages: function() {
+      var scrollTimer = setInterval(function() {
+        $('#messages').scrollTop(1E10);
+      }, 100);
+
+      setTimeout(function() {
+        clearInterval(scrollTimer);
+      }, 1000);
+    },
     // Method to toggle popover state
     togglePopover: function(data) {
       var App_this = this;
@@ -487,14 +502,34 @@ const App = new Vue({
         }
       }
     },
+    // Function to enable user to edit a message of theirs
+    editMessage: function(e) {
+      var message_id = parseInt($(e.target).closest(".chat-message").attr("data-message_id"));
+      if (this.states.modal.item && this.states.modal.item.hasOwnProperty("content") && this.states.modal.item.message_id == message_id) {
+        var modal = $('#message-edit-modal');
+        var content = modal.find("textarea").val().trim();
+
+        if (content !== this.states.modal.item.content) {
+          axios.put('/api/messages/' + this.states.modal.item.message_id, {
+             content: content,
+          })
+           .then(function (response) {
+             console.log(response);
+             modal.modal('hide');
+           })
+           .catch(function (error) {
+             console.log(error);
+          });
+        } else {
+          modal.modal('hide');
+        }
+      } else {
+        this.states.modal.item = this.findMessage(message_id);
+      }
+    },
     // Function to delete a message
     deleteMessage: function(e) {
       var message_id = parseInt($(e.target).closest(".chat-message").attr("data-message_id"));
-      if (typeof message_id == 'undefined') {
-        message_id = this.states.modal_item;
-      } else {
-        this.states.modal_item = message_id;
-      }
 
       this.$dialog.confirm({
         title: 'Delete message',
@@ -897,6 +932,10 @@ function listenToChannel(channel_id) {
         console.log(e);
         App.messages.splice(App.messages.findIndex(message => message.message_id == e.message.message_id), 1);
      })
+     .listen('MessageUpdate', (e) => {
+        console.log(e);
+        Vue.set(App.messages, App.messages.findIndex(message => message.message_id == e.message.message_id), e.message);
+     })
      .listen('ChannelRemove', (e) => {
         console.log(e);
         App.channels.splice(App.channels.indexOf(e.channel), 1);
@@ -925,14 +964,18 @@ function listenToChannel(channel_id) {
 if (App.logged_in && document.getElementById('messages')) {
   // Detect scroll on messages container
   $('#messages').scroll(function() {
-    App.states.messages.scroll.position = $('#messages').scrollTop();
+    Vue.nextTick(function() {
+      App.states.messages.scroll.position = $('#messages')[0].scrollTop;
+      App.states.messages.scroll.height = $('#messages')[0].scrollHeight;
+      App.states.messages.scroll.outer_height = $('#messages').outerHeight();
+    });
+  });
+
+  Vue.nextTick(function() {
+    App.states.messages.scroll.position = $('#messages')[0].scrollTop;
     App.states.messages.scroll.height = $('#messages')[0].scrollHeight;
     App.states.messages.scroll.outer_height = $('#messages').outerHeight();
   });
-
-  App.states.messages.scroll.position = $('#messages')[0].scrollTop;
-  App.states.messages.scroll.height = $('#messages')[0].scrollHeight;
-  App.states.messages.scroll.outer_height = $('#messages').outerHeight();
 
   // Join presence channel through Laravel Echo
   Echo.join('presence')
@@ -948,8 +991,13 @@ if (App.logged_in && document.getElementById('messages')) {
      .listen('UserUpdate', (e) => {
         console.log(e.user);
         Vue.set(App.users, App.users.findIndex((user_find => user_find.id == e.user.id)), e.user);
-        App.states.account.avatar = App.states.account.avatar + '?' + Date.now();
-        $(".avatar:not(#avatar-upload)").attr('src', App.states.account.avatar);
+        var src = $(".avatar[data-user_id='" + e.user.id + "']").attr('src');
+        if (src.indexOf('?') > 0) {
+          src = src.substring(0, src.indexOf('?')) + '?' + Date.now();
+        } else {
+          src = src + '?' + Date.now();
+        }
+        $(".avatar[data-user_id='" + e.user.id + "']").attr('src', src);
         if (e.user.id == App.current_user.id) {
           App.current_user.status = e.user.status;
           App.current_user.username = e.user.username;
