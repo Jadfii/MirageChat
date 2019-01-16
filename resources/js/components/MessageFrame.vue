@@ -19,7 +19,7 @@
           <div class="dropdown-menu messages-actions" :aria-labelledby="'message-action-' + index">
             <a @click="edit_message" data-toggle="modal" data-target="#message-edit-modal" class="dropdown-item" v-if="message.user_id == current_user.id">Edit</a>
             <a @click="delete_message" class="dropdown-item" v-if="message.user_id == current_user.id">Delete</a>
-            <a @click="" class="dropdown-item">Copy ID</a>
+            <a @click="copyID(message.message_id)" class="dropdown-item">Copy ID</a>
           </div>
         </div>
       </div>
@@ -113,6 +113,13 @@
           },
           getURLs: function() {
             return this.message.content.match(this.urls_pattern);
+          },
+          copyID: function(message_id) {
+            navigator.clipboard.writeText(message_id).then(function() {
+              //
+            }, function(err) {
+              console.error('Error copying ID to clipboard: ', err);
+            });
           },
         },
         props: {

@@ -82985,6 +82985,13 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
     },
     getURLs: function getURLs() {
       return this.message.content.match(this.urls_pattern);
+    },
+    copyID: function copyID(message_id) {
+      navigator.clipboard.writeText(message_id).then(function () {
+        //
+      }, function (err) {
+        console.error('Error copying ID to clipboard: ', err);
+      });
     }
   },
   props: {
@@ -83141,7 +83148,11 @@ var render = function() {
                     "a",
                     {
                       staticClass: "dropdown-item",
-                      on: { click: function($event) {} }
+                      on: {
+                        click: function($event) {
+                          _vm.copyID(_vm.message.message_id)
+                        }
+                      }
                     },
                     [_vm._v("Copy ID")]
                   )
