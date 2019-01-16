@@ -9,7 +9,6 @@ import VuejsDialog from 'vuejs-dialog';
 import VTooltip from 'v-tooltip';
 import { focus } from 'vue-focus';
 window.moment = require('moment');
-window.Vue = require('vue');
 window.autosize = require('autosize');
 window.isOnline = require('is-online');
 window.away = require('away');
