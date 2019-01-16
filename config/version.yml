@@ -2,8 +2,8 @@ version_source: config
 blade_directive: version
 current:
     major: 1
-    minor: 0
-    patch: 3
+    minor: 1
+    patch: 0
     format: '{$major}.{$minor}.{$patch}'
     git_absorb: false
 cache:
@@ -27,6 +27,6 @@ format:
     minor: '{$minor}'
     patch: '{$patch}'
     build: '{$build}'
-    version: '{$major}.{$minor}.{$patch} (build {$build})'
+    version: '{$major}.{$minor}.{$patch}'
     full: 'version {$major}.{$minor}.{$patch} (build {$build})'
     compact: 'v{$major}.{$minor}.{$patch}-{$build}'
