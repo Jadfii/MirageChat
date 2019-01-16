@@ -221,6 +221,9 @@ const App = new Vue({
     'states.typing.focused': function() {
       var App_this = this;
     },
+    'states.modal.item': function() {
+      autosize($('textarea'));
+    },
     'window.width': function() {
       if (this.window.width <= 768) {
         this.states.userlist = false;
@@ -504,7 +507,7 @@ const App = new Vue({
       var message_id = parseInt($(e.target).closest(".chat-message").attr("data-message_id"));
       if (this.states.modal.item && this.states.modal.item.hasOwnProperty("content")) {
         var modal = $('#message-edit-modal');
-        var content = modal.find("input").val().trim();
+        var content = modal.find("textarea").val().trim();
 
         if (content !== this.states.modal.item.content) {
           axios.put('/api/messages/' + this.states.modal.item.message_id, {

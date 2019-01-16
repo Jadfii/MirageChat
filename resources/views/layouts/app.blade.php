@@ -106,10 +106,10 @@
             </form-modal>
 
             <form-modal :title="'Edit message'" :message="''" :id="'message-edit-modal'" :func="editMessage">
-                <template v-if="states.modal.item" slot="body">
+                <template slot="body">
                   <div class="form-group form-group-alt">
                       <label for="message_content">Message</label>
-                      <input :value="states.modal.item.content" name="message_content" type="text" class="form-control form-field" autocomplete="off" required>
+                      <textarea v-if="states.modal.item" :value="states.modal.item.content" name="message_content" class="inline-scroll scroll-light form-control form-field" autocomplete="off"></textarea>
                       <div class="form-error"></div>
                   </div>
                 </template>
