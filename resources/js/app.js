@@ -505,7 +505,6 @@ const App = new Vue({
       if (this.states.modal.item && this.states.modal.item.hasOwnProperty("content")) {
         var modal = $('#message-edit-modal');
         var content = modal.find("input").val().trim();
-        console.log(content);
 
         if (content !== this.states.modal.item.content) {
           axios.put('/api/messages/' + this.states.modal.item.message_id, {
@@ -929,6 +928,10 @@ function listenToChannel(channel_id) {
      .listen('MessageRemove', (e) => {
         console.log(e);
         App.messages.splice(App.messages.findIndex(message => message.message_id == e.message.message_id), 1);
+     })
+     .listen('MessageUpdate', (e) => {
+        console.log(e);
+        Vue.set(App.messages, App.messages.findIndex(message => message.message_id == e.message.message_id), e.message);
      })
      .listen('ChannelRemove', (e) => {
         console.log(e);

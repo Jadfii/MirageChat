@@ -6,6 +6,7 @@ use App\Message;
 use App\Channel;
 use App\Events\MessageNew;
 use App\Events\MessageRemove;
+use App\Events\MessageUpdate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -141,8 +142,10 @@ class MessageController extends Controller
       $user = Auth::guard('api')->user();
 
       $message_obj = $message;
-      $message = $message::where('message_id', $message->message_id)->get(Message::$viewable)->first();
-      $message['read'] = $message->isRead($user, $message_obj);
+      $message = $message::where('message_id', $message->message_id)->get(Message::$viewable)->first()->toArray();
+      $message['read'] = $message_obj->isRead($user, $message_obj);
+
+      broadcast(new MessageUpdate($user, $message));
 
       return response()->json($message, 200);
   }

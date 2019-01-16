@@ -41873,7 +41873,6 @@ var App = new Vue({
       if (this.states.modal.item && this.states.modal.item.hasOwnProperty("content")) {
         var modal = $('#message-edit-modal');
         var content = modal.find("input").val().trim();
-        console.log(content);
 
         if (content !== this.states.modal.item.content) {
           axios.put('/api/messages/' + this.states.modal.item.message_id, {
@@ -42296,6 +42295,11 @@ function listenToChannel(channel_id) {
     App.messages.splice(App.messages.findIndex(function (message) {
       return message.message_id == e.message.message_id;
     }), 1);
+  }).listen('MessageUpdate', function (e) {
+    console.log(e);
+    Vue.set(App.messages, App.messages.findIndex(function (message) {
+      return message.message_id == e.message.message_id;
+    }), e.message);
   }).listen('ChannelRemove', function (e) {
     console.log(e);
     App.channels.splice(App.channels.indexOf(e.channel), 1);
