@@ -15,7 +15,12 @@
         </p>
         <p v-else class="chat-markup">{{ message.content }}</p>
         <div class="chat-actions">
-          <a @click="delete_message" v-if="message.user_id == current_user.id && !message.hidden" class="chat-delete chat-action icon"><i class="material-icons">delete</i></a></p>
+          <a :id="'message-action-' + index" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" class="chat-action icon dropdown-toggle"><i class="material-icons">more_horiz</i></a>
+          <div class="dropdown-menu messages-actions" :aria-labelledby="'message-action-' + index">
+            <a @click="edit_message" data-toggle="modal" data-target="#message-edit-modal" class="dropdown-item" v-if="message.user_id == current_user.id">Edit</a>
+            <a @click="delete_message" class="dropdown-item" v-if="message.user_id == current_user.id">Delete</a>
+            <a @click="copyID(message.message_id)" class="dropdown-item">Copy ID</a>
+          </div>
         </div>
       </div>
       <a v-if="hasImageURL()" v-for="(URL, index) in getURLs()" v-bind:href="URL" target="_blank"><img v-bind:src="URL" class="chat-markup"></img></a>
@@ -109,6 +114,13 @@
           getURLs: function() {
             return this.message.content.match(this.urls_pattern);
           },
+          copyID: function(message_id) {
+            navigator.clipboard.writeText(message_id).then(function() {
+              //
+            }, function(err) {
+              console.error('Error copying ID to clipboard: ', err);
+            });
+          },
         },
         props: {
           current_user: [Array, Object],
@@ -124,6 +136,7 @@
           close: [Boolean],
           close_before: [Boolean],
           delete_message: [Function],
+          edit_message: [Function],
           mention: [Boolean],
           mentions: [Array],
           scrolled_bottom: [Boolean],

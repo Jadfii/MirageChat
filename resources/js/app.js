@@ -221,6 +221,9 @@ const App = new Vue({
     'states.typing.focused': function() {
       var App_this = this;
     },
+    'states.modal.item': function() {
+      autosize($('textarea'));
+    },
     'window.width': function() {
       if (this.window.width <= 768) {
         this.states.userlist = false;
@@ -499,14 +502,34 @@ const App = new Vue({
         }
       }
     },
+    // Function to enable user to edit a message of theirs
+    editMessage: function(e) {
+      var message_id = parseInt($(e.target).closest(".chat-message").attr("data-message_id"));
+      if (this.states.modal.item && this.states.modal.item.hasOwnProperty("content") && this.states.modal.item.message_id == message_id) {
+        var modal = $('#message-edit-modal');
+        var content = modal.find("textarea").val().trim();
+
+        if (content !== this.states.modal.item.content) {
+          axios.put('/api/messages/' + this.states.modal.item.message_id, {
+             content: content,
+          })
+           .then(function (response) {
+             console.log(response);
+             modal.modal('hide');
+           })
+           .catch(function (error) {
+             console.log(error);
+          });
+        } else {
+          modal.modal('hide');
+        }
+      } else {
+        this.states.modal.item = this.findMessage(message_id);
+      }
+    },
     // Function to delete a message
     deleteMessage: function(e) {
       var message_id = parseInt($(e.target).closest(".chat-message").attr("data-message_id"));
-      if (typeof message_id == 'undefined') {
-        message_id = this.states.modal_item;
-      } else {
-        this.states.modal_item = message_id;
-      }
 
       this.$dialog.confirm({
         title: 'Delete message',
@@ -908,6 +931,10 @@ function listenToChannel(channel_id) {
      .listen('MessageRemove', (e) => {
         console.log(e);
         App.messages.splice(App.messages.findIndex(message => message.message_id == e.message.message_id), 1);
+     })
+     .listen('MessageUpdate', (e) => {
+        console.log(e);
+        Vue.set(App.messages, App.messages.findIndex(message => message.message_id == e.message.message_id), e.message);
      })
      .listen('ChannelRemove', (e) => {
         console.log(e);
