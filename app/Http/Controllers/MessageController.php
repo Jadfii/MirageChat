@@ -138,6 +138,8 @@ class MessageController extends Controller
         'content' => $request->input('content'),
       ]);
 
+      $user = Auth::guard('api')->user();
+
       $message_obj = $message;
       $message = $message::where('message_id', $message->message_id)->get(Message::$viewable)->first();
       $message['read'] = $message->isRead($user, $message_obj);
