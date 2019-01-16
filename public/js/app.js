@@ -41867,14 +41867,33 @@ var App = new Vue({
         }
       }
     },
+    // Function to enable user to edit a message of theirs
+    editMessage: function editMessage(e) {
+      var message_id = parseInt($(e.target).closest(".chat-message").attr("data-message_id"));
+      if (this.states.modal.item && this.states.modal.item.hasOwnProperty("content")) {
+        var modal = $('#message-edit-modal');
+        var content = modal.find("input").val().trim();
+        console.log(content);
+
+        if (content !== this.states.modal.item.content) {
+          axios.put('/api/messages/' + this.states.modal.item.message_id, {
+            content: content
+          }).then(function (response) {
+            console.log(response);
+            modal.modal('hide');
+          }).catch(function (error) {
+            console.log(error);
+          });
+        } else {
+          modal.modal('hide');
+        }
+      } else {
+        this.states.modal.item = this.findMessage(message_id);
+      }
+    },
     // Function to delete a message
     deleteMessage: function deleteMessage(e) {
       var message_id = parseInt($(e.target).closest(".chat-message").attr("data-message_id"));
-      if (typeof message_id == 'undefined') {
-        message_id = this.states.modal_item;
-      } else {
-        this.states.modal_item = message_id;
-      }
 
       this.$dialog.confirm({
         title: 'Delete message',
@@ -82868,6 +82887,11 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 //
 //
 //
+//
+//
+//
+//
+//
 
 /* harmony default export */ __webpack_exports__["default"] = ({
   mounted: function mounted() {
@@ -82970,6 +82994,7 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
     close: [Boolean],
     close_before: [Boolean],
     delete_message: [Function],
+    edit_message: [Function],
     mention: [Boolean],
     mentions: [Array],
     scrolled_bottom: [Boolean]
@@ -83054,21 +83079,67 @@ var render = function() {
                 ]),
             _vm._v(" "),
             _c("div", { staticClass: "chat-actions" }, [
-              _vm.message.user_id == _vm.current_user.id && !_vm.message.hidden
-                ? _c(
+              _c(
+                "a",
+                {
+                  staticClass: "chat-action icon dropdown-toggle",
+                  attrs: {
+                    id: "message-action-" + _vm.index,
+                    "data-toggle": "dropdown",
+                    "aria-haspopup": "true",
+                    "aria-expanded": "false"
+                  }
+                },
+                [
+                  _c("i", { staticClass: "material-icons" }, [
+                    _vm._v("more_horiz")
+                  ])
+                ]
+              ),
+              _vm._v(" "),
+              _c(
+                "div",
+                {
+                  staticClass: "dropdown-menu messages-actions",
+                  attrs: { "aria-labelledby": "message-action-" + _vm.index }
+                },
+                [
+                  _vm.message.user_id == _vm.current_user.id
+                    ? _c(
+                        "a",
+                        {
+                          staticClass: "dropdown-item",
+                          attrs: {
+                            "data-toggle": "modal",
+                            "data-target": "#message-edit-modal"
+                          },
+                          on: { click: _vm.edit_message }
+                        },
+                        [_vm._v("Edit")]
+                      )
+                    : _vm._e(),
+                  _vm._v(" "),
+                  _vm.message.user_id == _vm.current_user.id
+                    ? _c(
+                        "a",
+                        {
+                          staticClass: "dropdown-item",
+                          on: { click: _vm.delete_message }
+                        },
+                        [_vm._v("Delete")]
+                      )
+                    : _vm._e(),
+                  _vm._v(" "),
+                  _c(
                     "a",
                     {
-                      staticClass: "chat-delete chat-action icon",
-                      on: { click: _vm.delete_message }
+                      staticClass: "dropdown-item",
+                      on: { click: function($event) {} }
                     },
-                    [
-                      _c("i", { staticClass: "material-icons" }, [
-                        _vm._v("delete")
-                      ])
-                    ]
+                    [_vm._v("Copy ID")]
                   )
-                : _vm._e(),
-              _c("p")
+                ]
+              )
             ])
           ]),
           _vm._v(" "),

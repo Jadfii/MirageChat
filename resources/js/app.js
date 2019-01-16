@@ -499,14 +499,35 @@ const App = new Vue({
         }
       }
     },
+    // Function to enable user to edit a message of theirs
+    editMessage: function(e) {
+      var message_id = parseInt($(e.target).closest(".chat-message").attr("data-message_id"));
+      if (this.states.modal.item && this.states.modal.item.hasOwnProperty("content")) {
+        var modal = $('#message-edit-modal');
+        var content = modal.find("input").val().trim();
+        console.log(content);
+
+        if (content !== this.states.modal.item.content) {
+          axios.put('/api/messages/' + this.states.modal.item.message_id, {
+             content: content,
+          })
+           .then(function (response) {
+             console.log(response);
+             modal.modal('hide');
+           })
+           .catch(function (error) {
+             console.log(error);
+          });
+        } else {
+          modal.modal('hide');
+        }
+      } else {
+        this.states.modal.item = this.findMessage(message_id);
+      }
+    },
     // Function to delete a message
     deleteMessage: function(e) {
       var message_id = parseInt($(e.target).closest(".chat-message").attr("data-message_id"));
-      if (typeof message_id == 'undefined') {
-        message_id = this.states.modal_item;
-      } else {
-        this.states.modal_item = message_id;
-      }
 
       this.$dialog.confirm({
         title: 'Delete message',

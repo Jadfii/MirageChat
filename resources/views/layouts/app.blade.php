@@ -105,6 +105,20 @@
                 </template>
             </form-modal>
 
+            <form-modal :title="'Edit message'" :message="''" :id="'message-edit-modal'" :func="editMessage">
+                <template v-if="states.modal.item" slot="body">
+                  <div class="form-group form-group-alt">
+                      <label for="message_content">Message</label>
+                      <input :value="states.modal.item.content" name="message_content" type="text" class="form-control form-field" autocomplete="off" required>
+                      <div class="form-error"></div>
+                  </div>
+                </template>
+                <template slot="footer">
+                    <button type="submit" class="btn btn-primary btn-confirm">Confirm</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                </template>
+            </form-modal>
+
             <v-popover
               v-if="states.popover.open"
               :style="tooltip_location"

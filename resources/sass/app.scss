@@ -1505,31 +1505,44 @@ img.chat-markup {
   top: 0;
   right: 0;
   display: none;
-  height: 40px;
-  width: 40px;
-  border-radius: 50%;
+  height: auto;
+  width: auto;
+  margin: 0;
 }
 
 .chat-action:hover {
-  background: rgba(34, 50, 84, 0.03);
+  background: none;
 }
 
 .chat-action:nth-child(2) {
   right: 60px;
 }
 
-.chat-message:hover .chat-content .chat-actions .chat-action {
+.chat-message:hover .chat-content .chat-actions .chat-action, .chat-actions.show .chat-action {
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .chat-action i {
-  margin: auto;
+  margin: 0;
+  color: var(--main-bg-colour);
+  height: 15px;
 }
 
 .chat-action:hover i {
-  color: var(--a-colour);
+  color: var(--secondary-bg-colour);
+}
+
+.messages-actions {
+  min-width: 0;
+  width: 75px;
+}
+
+.messages-actions .dropdown-item {
+  font-size: 12px;
+  padding: 0.05rem 0.5rem;
+  text-align: center;
 }
 
 .badge-hidden {

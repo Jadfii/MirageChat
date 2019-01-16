@@ -12,6 +12,7 @@
             v-if="active_messages.length > 0"
             v-for="(message, index) in active_messages"
             :delete_message="deleteMessage"
+            :edit_message="editMessage"
             :key="message.message_id"
             :index="index | parse_int"
             :current_user="current_user"
