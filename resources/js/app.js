@@ -8,6 +8,7 @@ require('./bootstrap');
 import VuejsDialog from 'vuejs-dialog';
 import VTooltip from 'v-tooltip';
 import { focus } from 'vue-focus';
+window.Vue = require('vue');
 window.moment = require('moment');
 window.autosize = require('autosize');
 window.isOnline = require('is-online');
