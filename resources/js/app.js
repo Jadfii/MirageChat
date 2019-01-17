@@ -18,13 +18,13 @@ window.Push = require('push.js');
 /**
  * Load custom Vue components and register them from their respective files
  */
-Vue.component('modal', require('./components/Modal.vue'));
-Vue.component('form-modal', require('./components/FormModal.vue'));
-Vue.component('status-badge', require('./components/StatusBadge.vue'));
-Vue.component('avatar', require('./components/Avatar.vue'));
-Vue.component('user-frame', require('./components/UserFrame.vue'));
-Vue.component('settings-frame', require('./components/SettingsFrame.vue'));
-Vue.component('message-frame', require('./components/MessageFrame.vue'));
+Vue.component('modal', require('./components/Modal.vue').default);
+Vue.component('form-modal', require('./components/FormModal.vue').default);
+Vue.component('status-badge', require('./components/StatusBadge.vue').default);
+Vue.component('avatar', require('./components/Avatar.vue').default);
+Vue.component('user-frame', require('./components/UserFrame.vue').default);
+Vue.component('settings-frame', require('./components/SettingsFrame.vue').default);
+Vue.component('message-frame', require('./components/MessageFrame.vue').default);
 
 /**
  * Declare Vue filters
