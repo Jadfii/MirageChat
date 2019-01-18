@@ -14,7 +14,7 @@ class Add2faColumnToUsers extends Migration
     public function up()
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->text('2fa_secret')->nullable();
+            $table->text('google2fa_secret')->nullable();
         });
     }
 
@@ -26,7 +26,7 @@ class Add2faColumnToUsers extends Migration
     public function down()
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn('2fa_secret');
+            $table->dropColumn('google2fa_secret');
         });
     }
 }
