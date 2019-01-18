@@ -238,6 +238,12 @@
                                         </div>
                                       </div>
                                   </settings-frame>
+                                  <h4 class="heading-title">2 Factor Authentication</h4>
+                                  <settings-frame>
+                                      <div class="form-group no-margin form-submit">
+                                        <button @click="enable_2fa" class="btn btn-primary">{{ __('Enable 2FA') }}</button>
+                                      </div>
+                                  </settings-frame>
                                 </div>
                             </div>
                             <div class="settings-body" :ref="'app_information'" v-show="isActiveTab('app_information')">
