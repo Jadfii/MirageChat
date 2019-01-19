@@ -11,10 +11,14 @@
 |
 */
 
-/*Route::get('/', function () {
-    return view('welcome');
-});*/
+Route::prefix('2fa')->group(function () {
+    Route::post('/', 'Google2FAController@create');
+    Route::post('/submit', 'Google2FAController@store');
+});
+
 Route::post('/webhooks/users/status', 'UserController@status_web');
+
+
 Route::get('/home', function () {
     return redirect('/');
 });

@@ -841,6 +841,35 @@ const App = new Vue({
 
       this.states.typing.selected_mention = 0;
     },
+    // Method to hit API route and initiate 2fa for current user
+    enable_2fa: function() {
+      var App_this = this;
+      axios.post('/2fa')
+       .then(function (response) {
+         console.log(response);
+         App_this.states.modal.item = response.data;
+       })
+       .catch(function (error) {
+         console.log(error);
+      });
+    },
+    // Method to confirm and enable 2fa for current user
+    confirm_2fa: function() {
+      var App_this = this;
+      var modal = $('#enable-2fa-modal');
+      var verify_code = modal.find("input").val().trim();
+
+      axios.post('/2fa/submit', {
+        'verify_code': verify_code,
+      })
+       .then(function (response) {
+         console.log(response);
+         modal.modal('hide');
+       })
+       .catch(function (error) {
+         console.log(error);
+      });
+    },
   },
 });
 

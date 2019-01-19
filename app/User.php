@@ -27,7 +27,7 @@ class User extends Authenticatable implements MustVerifyEmail
      * @var array
      */
     protected $fillable = [
-        'username', 'email', 'password', 'api_token', '2fa_secret',
+        'username', 'email', 'password', 'api_token', 'google2fa_secret',
     ];
 
     /**
@@ -36,7 +36,7 @@ class User extends Authenticatable implements MustVerifyEmail
      * @var array
      */
     protected $hidden = [
-        'password', 'remember_token', '2fa_secret',
+        'password', 'remember_token'
     ];
 
     /**
@@ -54,7 +54,16 @@ class User extends Authenticatable implements MustVerifyEmail
      * @var array
      */
     public static $viewable = [
-        'id', 'username', 'email', 'status', 'api_token'
+        'id', 'username', 'email', 'status', 'api_token', 'google2fa_secret',
+    ];
+
+    /**
+     * The attributes that are allowed to be edited by user
+     *
+     * @var array
+     */
+    public $editable = [
+        'username', 'email', 'password',
     ];
 
     /**

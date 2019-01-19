@@ -104,7 +104,7 @@ class UserController extends Controller
   {
       $data = $request->all();
       foreach ($data as $key => $value) {
-        if ($key == 'api_token' || $key == 'status' || $key == 'avatar') {
+        if (!in_array($key, $user->editable)) {
           unset($data[$key]);
         }
       }

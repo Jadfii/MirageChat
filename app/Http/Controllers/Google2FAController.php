@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -15,7 +16,6 @@ class Google2FAController extends Controller
   public function __construct(Request $request)
   {
       $this->middleware('auth:api');
-      $this->middleware('2fa', ['only' => ['store']]);
   }
 
   public function create(Request $request)
@@ -30,7 +30,6 @@ class Google2FAController extends Controller
 
       $google2fa_secret = $google2fa->generateSecretKey();
 
-      // Save secret key to session for use in 'store' method
       $request->session()->flash('google_2fa_secret_key', $google2fa_secret);
 
       // Generate the QR image. This is the image the user will scan with their app
@@ -41,8 +40,8 @@ class Google2FAController extends Controller
           $google2fa_secret
       );
 
-      // return QR image and secret
-      return response()->json(['QR_Image' => $QR_Image, 'secret' => $google2fa_secret], 201);
+      // return QR image and secret codes
+      return response()->json(['qr_img' => $QR_Image, 'secret' => $google2fa_secret], 201);
   }
 
   public function store(Request $request)
@@ -52,9 +51,16 @@ class Google2FAController extends Controller
         $user = Auth::user();
       }
 
-      $user->google2fa_secret = session('google_2fa_secret_key');
-      $user->save();
+      // Initialise the 2FA class
+      $google2fa = app('pragmarx.google2fa');
 
-      return response()->json($user, 201);
+      if ($google2fa->verifyKey(session('google_2fa_secret_key'), $request->input('verify_code'))) {
+        $user->google2fa_secret = session('google_2fa_secret_key');
+        $user->save();
+
+        return response()->json($user, 201);
+      } else {
+        return response()->json("Invalid Verification Code", 400);
+      }
   }
 }

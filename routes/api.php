@@ -53,9 +53,3 @@ Route::prefix('users')->group(function () {
     Route::get('/', 'UserController@index');
     Route::get('{user}', 'UserController@show');
 });
-
-Route::prefix('users/2fa')->group(function () {
-    Route::post('{user}', 'Google2FAController@create');
-
-    
-});
