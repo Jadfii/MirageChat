@@ -777,6 +777,10 @@ form, .form-wrapper {
   overflow: hidden;
 }
 
+.form-group-alt p {
+  color: #fff;
+}
+
 .form-group-alt label, .form-group-alt label.active {
   position: relative;
   left: 0;
@@ -787,6 +791,15 @@ form, .form-wrapper {
   text-transform: uppercase;
   font-weight: bold;
   color: inherit !important;
+}
+
+.qr-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.qr-wrapper {
+  width: 50%;
 }
 
 input:focus~label, textarea:focus~label, label.active {

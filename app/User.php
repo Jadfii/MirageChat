@@ -27,7 +27,7 @@ class User extends Authenticatable implements MustVerifyEmail
      * @var array
      */
     protected $fillable = [
-        'username', 'email', 'password', 'api_token'
+        'username', 'email', 'password', 'api_token', 'google2fa_secret',
     ];
 
     /**
@@ -36,7 +36,7 @@ class User extends Authenticatable implements MustVerifyEmail
      * @var array
      */
     protected $hidden = [
-        'password', 'remember_token',
+        'password', 'remember_token'
     ];
 
     /**
@@ -54,7 +54,16 @@ class User extends Authenticatable implements MustVerifyEmail
      * @var array
      */
     public static $viewable = [
-        'id', 'username', 'email', 'status', 'api_token'
+        'id', 'username', 'email', 'status', 'api_token', 'google2fa_secret',
+    ];
+
+    /**
+     * The attributes that are allowed to be edited by user
+     *
+     * @var array
+     */
+    public $editable = [
+        'username', 'email', 'password',
     ];
 
     /**
@@ -76,12 +85,23 @@ class User extends Authenticatable implements MustVerifyEmail
       return $this->hasMany(Message::class);
     }
 
+    /**
+     * Send password reset notification for user
+     *
+     * @param string  $token
+     */
     public function sendPasswordResetNotification($token)
     {
         $this->notify(new ResetPassword($token));
     }
 
-    public function getProfile() {
+    /**
+     * Get user profile attributes
+     *
+     * @return array
+     */
+    public function getProfile()
+    {
         return array(
             "id" => $this->id,
             "username" => $this->username,
@@ -90,10 +110,37 @@ class User extends Authenticatable implements MustVerifyEmail
         );
     }
 
-    public function createAvatar() {
+    /**
+     * Create user avatar from avatar api
+     *
+     */
+    public function createAvatar()
+    {
       // Create user avatar (download from API and save)
       if (!Storage::exists(storage_path('app/public/avatars/'.$this->id.'.png'))) {
         Storage::put('public/avatars/'.$this->id.'.png', file_get_contents('https://api.adorable.io/avatars/256/'.$this->id.'.png'));
       }
+    }
+
+    /**
+     * Ecrypt the user's google_2fa secret.
+     *
+     * @param  string  $value
+     * @return string
+     */
+    public function set2faSecretAttribute($value)
+    {
+         $this->attributes['google2fa_secret'] = encrypt($value);
+    }
+
+    /**
+     * Decrypt the user's google_2fa secret.
+     *
+     * @param  string  $value
+     * @return string
+     */
+    public function get2faSecretAttribute($value)
+    {
+        return decrypt($value);
     }
 }

@@ -41376,13 +41376,13 @@ window.Push = __webpack_require__(177);
 /**
  * Load custom Vue components and register them from their respective files
  */
-Vue.component('modal', __webpack_require__(178));
-Vue.component('form-modal', __webpack_require__(181));
-Vue.component('status-badge', __webpack_require__(184));
-Vue.component('avatar', __webpack_require__(187));
-Vue.component('user-frame', __webpack_require__(190));
-Vue.component('settings-frame', __webpack_require__(193));
-Vue.component('message-frame', __webpack_require__(196));
+Vue.component('modal', __webpack_require__(178).default);
+Vue.component('form-modal', __webpack_require__(181).default);
+Vue.component('status-badge', __webpack_require__(184).default);
+Vue.component('avatar', __webpack_require__(187).default);
+Vue.component('user-frame', __webpack_require__(190).default);
+Vue.component('settings-frame', __webpack_require__(193).default);
+Vue.component('message-frame', __webpack_require__(196).default);
 
 /**
  * Declare Vue filters
@@ -42207,6 +42207,14 @@ var App = new Vue({
       this.states.typing.autocomplete = false;
 
       this.states.typing.selected_mention = 0;
+    },
+    // Method to hit API route and enable 2fa for current user
+    enable_2fa: function enable_2fa() {
+      axios.post('/api/channels/' + this.current_user.id).then(function (response) {
+        console.log(response);
+      }).catch(function (error) {
+        console.log(error);
+      });
     }
   }
 });
