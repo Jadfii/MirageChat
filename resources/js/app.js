@@ -865,9 +865,32 @@ const App = new Vue({
        .then(function (response) {
          console.log(response);
          modal.modal('hide');
+         modal.find("input").val('');
+         Vue.set(App_this.current_user, 'google2fa_secret', response.data.google2fa_secret);
        })
        .catch(function (error) {
          console.log(error);
+         modal.find(".form-error").text(error.response.data);
+      });
+    },
+    // Method to disable 2fa for current user
+    remove_2fa: function() {
+      var App_this = this;
+      var modal = $('#remove-2fa-modal');
+      var verify_code = modal.find("input").val().trim();
+
+      axios.post('/2fa/remove', {
+        'verify_code': verify_code,
+      })
+       .then(function (response) {
+         console.log(response);
+         modal.modal('hide');
+         modal.find("input").val('');
+         Vue.set(App_this.current_user, 'google2fa_secret', response.data.google2fa_secret);
+       })
+       .catch(function (error) {
+         console.log(error);
+         modal.find(".form-error").text(error.response.data);
       });
     },
   },

@@ -63,4 +63,24 @@ class Google2FAController extends Controller
         return response()->json("Invalid Verification Code", 400);
       }
   }
+
+  public function remove(Request $request)
+  {
+      $user = Auth::guard('api')->user();
+      if ($user == null) {
+        $user = Auth::user();
+      }
+
+      // Initialise the 2FA class
+      $google2fa = app('pragmarx.google2fa');
+
+      if ($google2fa->verifyKey($user->google2fa_secret, $request->input('verify_code'))) {
+        $user->google2fa_secret = null;
+        $user->save();
+
+        return response()->json($user, 201);
+      } else {
+        return response()->json("Invalid Authentication Code", 400);
+      }
+  }
 }

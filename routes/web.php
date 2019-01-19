@@ -14,6 +14,8 @@
 Route::prefix('2fa')->group(function () {
     Route::post('/', 'Google2FAController@create');
     Route::post('/submit', 'Google2FAController@store');
+
+    Route::post('/remove', 'Google2FAController@remove');
 });
 
 Route::post('/webhooks/users/status', 'UserController@status_web');

@@ -125,8 +125,21 @@
                         <label>Scan QR Code</label>
                         <img :src="states.modal.item.qr_img"></img>
                         <p>Or enter this code into your authenticator app manually: @{{ states.modal.item.secret }}</p>
+                    </div>
+                    <div class="form-group form-group-alt">
+                        <label for="verify_code">Authenticator code</label>
+                        <input name="verify_code" type="text" class="form-control form-field" autocomplete="off" autofocus required>
                         <div class="form-error"></div>
                     </div>
+                </template>
+                <template slot="footer">
+                    <button type="submit" class="btn btn-primary btn-confirm">Confirm</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                </template>
+            </form-modal>
+
+            <form-modal :title="'Remove 2FA'" :message="''" :id="'remove-2fa-modal'" :func="remove_2fa">
+                <template slot="body">
                     <div class="form-group form-group-alt">
                         <label for="verify_code">Authenticator code</label>
                         <input name="verify_code" type="text" class="form-control form-field" autocomplete="off" autofocus required>
@@ -262,7 +275,7 @@
                                   <settings-frame>
                                       <div class="form-group no-margin form-submit">
                                         <button v-if="!current_user.google2fa_secret" @click="enable_2fa" data-toggle="modal" data-target="#enable-2fa-modal" class="btn btn-primary">{{ __('Enable 2FA') }}</button>
-                                        <button v-else class="btn btn-primary btn-delete">{{ __('Remove 2FA') }}</button>
+                                        <button v-else data-toggle="modal" data-target="#remove-2fa-modal" class="btn btn-primary btn-delete">{{ __('Remove 2FA') }}</button>
                                       </div>
                                   </settings-frame>
                                 </div>
