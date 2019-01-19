@@ -1226,3 +1226,10 @@ $(".form-field").on("change paste keyup blur focus", function(e) {
         $(element_label).addClass("active");
     }
 });
+
+// On modal close, clear form inputs if data-reset is defined
+$(".modal").on("hidden.bs.modal", function(e) {
+  if ($(e.target).data('reset') && $(e.target).data('reset') === true) {
+    $(e.target).find("form")[0].reset();
+  }
+});
