@@ -904,33 +904,6 @@ isOnline().then(online => {
   App.states.offline = !online;
 });
 
-// Detect if user is away from browser
-var idle_timer = away(300000);
-idle_timer.on('idle', function() {
-  App.updateStatus("away");
-});
-idle_timer.on('active', function() {
-  App.updateStatus("online");
-});
-
-$(window).focus(function() {
-  if (App.unread[App.states.current_channel] > 0) {
-    App.readChannel(App.states.current_channel);
-  }
-  Push.clear();
-
-  if (App.states.typing.focused) {
-    App.states.typing.autocomplete = true;
-  }
-});
-
-$(window).blur(function() {
-  if (App.states.typing.autocomplete) {
-    App.states.typing.focused = true;
-    App.states.typing.autocomplete = false;
-  }
-});
-
 // Start listening to channel websocket through Laravel Echo
 function listenToChannel(channel_id) {
   window['channel_' + channel_id.toString()] = Echo.private('channels.' + channel_id)
@@ -1013,7 +986,35 @@ function listenToChannel(channel_id) {
      });
 }
 
+// If user is logged in to the app do this
 if (App.logged_in && document.getElementById('messages')) {
+  // Detect if user is away from browser
+  var idle_timer = away(300000);
+  idle_timer.on('idle', function() {
+    App.updateStatus("away");
+  });
+  idle_timer.on('active', function() {
+    App.updateStatus("online");
+  });
+
+  $(window).focus(function() {
+    if (App.unread[App.states.current_channel] > 0) {
+      App.readChannel(App.states.current_channel);
+    }
+    Push.clear();
+
+    if (App.states.typing.focused) {
+      App.states.typing.autocomplete = true;
+    }
+  });
+
+  $(window).blur(function() {
+    if (App.states.typing.autocomplete) {
+      App.states.typing.focused = true;
+      App.states.typing.autocomplete = false;
+    }
+  });
+
   // Detect scroll on messages container
   $('#messages').scroll(function() {
     Vue.nextTick(function() {
