@@ -1053,6 +1053,13 @@ function listenToChannel(channel_id) {
 
 // If user is logged in to the app do this
 if (App.logged_in && document.getElementById('messages')) {
+  // Update user status if user refreshed and status is 'away'
+  if (App.current_user.status == 'away') {
+    setTimeout(function() {
+      App.updateStatus("online");
+    }, 2000);
+  }
+
   // Detect if user is away from browser
   var idle_timer = away(300000);
   idle_timer.on('idle', function() {
