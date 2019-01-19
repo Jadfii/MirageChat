@@ -15,7 +15,32 @@ class Google2FAController extends Controller
    */
   public function __construct(Request $request)
   {
-      $this->middleware('auth:api');
+      $this->middleware('auth', ['except' => ['index', 'authenticate']]);
+  }
+
+  public function index()
+  {
+      return view('google2fa.index');
+  }
+
+  public function authenticate(Request $request)
+  {
+      if (!$request->session()->has('2fa:user:id')) {
+        return redirect('/');
+      }
+
+      // Initialise the 2FA class
+      $google2fa = app('pragmarx.google2fa');
+
+      $user = User::findOrFail($request->session()->get('2fa:user:id'));
+      $token = $request->input('one_time_password');
+      if ($google2fa->verifyKey($user->google2fa_secret, $token)) {
+          $request->session()->remove('2fa:user:id');
+
+          auth()->loginUsingId($user->id);
+          return redirect('/');
+      }
+      return redirect('/login/auth')->withErrors(['error' => __('Invalid Code')]);
   }
 
   public function create(Request $request)

@@ -16,7 +16,10 @@ Route::prefix('2fa')->group(function () {
     Route::post('/submit', 'Google2FAController@store');
 
     Route::post('/remove', 'Google2FAController@remove');
+
+    Route::post('/login', 'Google2FAController@authenticate')->name('2fa-login')->middleware('2fa');
 });
+Route::get('/login/auth', 'Google2FAController@index');
 
 Route::post('/webhooks/users/status', 'UserController@status_web');
 
@@ -24,7 +27,7 @@ Route::post('/webhooks/users/status', 'UserController@status_web');
 Route::get('/home', function () {
     return redirect('/');
 });
-Route::get('/', 'HomeController@index')->name('home')->middleware('verified');
+Route::get('/', 'HomeController@index')->name('home')->middleware(['verified']);
 
 Auth::routes(['verify' => true]);
 Route::get('/password/reset/{token}/{email}', 'Auth\ResetPasswordController@showResetForm')->name('password.reset');
