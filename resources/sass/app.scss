@@ -1328,6 +1328,7 @@ button[type="submit"] {
   width: 100%;
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
 }
 
 .chat-message {
@@ -1375,6 +1376,7 @@ button[type="submit"] {
 
 .chat-text {
   position: relative;
+  width: 100%;
 }
 
 .chat-user {
