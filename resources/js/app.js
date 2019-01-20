@@ -977,7 +977,7 @@ function listenToChannel(channel_id) {
                 window['notifications_' + e.message.message_id] = Push.create(
                   App.findUser(e.message.user_id).username + ' (Channel: ' + App.findChannel(e.message.channel_id).name + ')', {
                     body: e.message.content,
-                    icon: 'https://api.adorable.io/avatars/100/' + e.message.user_id, // CHANGE THIS
+                    icon: '/storage/avatars/' + e.message.user_id + '.png',
                     onClick: function() {
                       window.focus();
                       this.close();
@@ -992,7 +992,7 @@ function listenToChannel(channel_id) {
               window['notifications_' + e.message.message_id] = Push.create(
                 App.findUser(e.message.user_id).username + ' (Channel: ' + App.findChannel(e.message.channel_id).name + ')', {
                   body: e.message.content,
-                  icon: 'https://api.adorable.io/avatars/100/' + e.message.user_id, // CHANGE THIS
+                  icon: '/storage/avatars/' + e.message.user_id + '.png',
                   onClick: function() {
                     window.focus();
                     this.close();
