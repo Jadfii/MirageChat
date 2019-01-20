@@ -38,6 +38,67 @@ $bad-colour: #ea2e49;
     --a-hover-colour: #e5eaf1;
     --good-colour: #22b66e;
     --bad-colour: #ea2e49;
+
+    --main-bg-colour-dark: #17212c;
+    --dark-bg-colour: #0D1620;
+    --main-header-colour-dark: #172033;
+    --outline-colour-dark: #1E2B3A;
+}
+
+/* DARK MODE STUFF */
+.app-container.dark-mode, .app-container.dark-mode p {
+  color: var(--a-colour);
+}
+
+.app-container.dark-mode h1,
+.app-container.dark-mode h2,
+.app-container.dark-mode h3,
+.app-container.dark-mode h4,
+.app-container.dark-mode h5,
+.app-container.dark-mode h6,
+.app-container.dark-mode .chat-message {
+  color: #fff;
+}
+
+.app-container.dark-mode .content,
+.app-container.dark-mode .chat-box-wrapper,
+.app-container.dark-mode .navbar,
+.app-container.dark-mode .form-control,
+.app-container.dark-mode .settings-wrapper,
+{
+  background-color: var(--main-bg-colour-dark);
+}
+
+.app-container.dark-mode .icon:hover {
+  background-color: var(--main-header-colour-dark);
+}
+
+.app-container.dark-mode .inline-scroll::-webkit-scrollbar-track-piece,
+.app-container.dark-mode .inline-scroll::-webkit-scrollbar-thumb
+{
+  border-color: var(--main-bg-colour-dark) !important;
+}
+
+.app-container.dark-mode .inline-scroll::-webkit-scrollbar-thumb {
+  background-color: var(--dark-bg-colour) !important;
+}
+
+.app-container.dark-mode .inline-scroll::-webkit-scrollbar-track {
+  background-color: var(--main-bg-colour);
+}
+
+.app-container.dark-mode .navbar,
+.app-container.dark-mode .chat-message,
+.app-container.dark-mode .form-control,
+.app-container.dark-mode .form-control:focus,
+.app-container.dark-mode .chat-box,
+.app-container.dark-mode .chat-box-inner,
+{
+  border-color: var(--outline-colour-dark);
+}
+
+.app-container.dark-mode h5, .app-container.dark-mode .nav-link {
+  color: #fff;
 }
 
 body > div:not(.app-container) {
