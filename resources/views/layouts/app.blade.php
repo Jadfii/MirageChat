@@ -45,7 +45,7 @@
     <link href="{{ asset('css/app.css') }}" rel="stylesheet">
 </head>
 <body>
-    <div class="app-container" id="app">
+    <div class="app-container" :class="{ 'dark-mode': user_options && user_options.dark_mode }" id="app">
         @if (Auth::guest() or !Auth()->user()->email_verified_at)
             <main>
                 @yield('content')
