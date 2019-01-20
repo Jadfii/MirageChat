@@ -292,10 +292,7 @@
                                           <h6 class="heading-subtitle">Dark mode</h6>
                                           <p class="heading-text">Enable dark mode. Easy on the eyes.</p>
                                       </div>
-                                      <div class="toggle-container ml-auto">
-                                          <input @click="changeOption" type="checkbox" class="toggle settings-toggle" name="dark_mode" id="dark_mode" :checked="user_options.dark_mode">
-                                          <label for="dark_mode" class="toggle-label">Dark mode</label>
-                                      </div>
+                                      <settings-toggle :name="'dark_mode'" :user_options="user_options" :func="changeOption"></settings-toggle>
                                   </settings-frame>
                                 </div>
                             </div>
