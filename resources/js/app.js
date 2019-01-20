@@ -196,12 +196,14 @@ const App = new Vue({
   watch: {
     messages: function() {
       var App_this = this;
-      var new_message = this.messages[this.messages.length - 1];
-      Vue.nextTick(function() {
-        if (App_this.messages_bottom && new_message.channel_id == App_this.states.current_channel) {
-          App_this.scrollBottomMessages();
-        }
-      });
+      if (this.messages.length > 0) {
+        var new_message = this.messages[this.messages.length - 1];
+        Vue.nextTick(function() {
+          if (App_this.messages_bottom && new_message.channel_id == App_this.states.current_channel) {
+            App_this.scrollBottomMessages();
+          }
+        });
+      }
     },
     'states.settings.display': function() {
       if (this.states.settings.account_edit) {
@@ -283,7 +285,7 @@ const App = new Vue({
     // Get users with access to current channel
     active_users: function() {
       if (this.active_channel) {
-        return this.getMembers(this.states.current_channel);
+        return this.getMembers(this.findChannel(this.states.current_channel));
       } else {
         return this.users_sorted;
       }
@@ -388,9 +390,8 @@ const App = new Vue({
       return this.messages.filter(message => message.channel_id == channel_id);
     },
     // Method to get members as array from channel
-    getMembers: function(channel_id) {
+    getMembers: function(channel) {
       var App_this = this;
-      var channel = this.findChannel(channel_id);
       if (typeof channel == 'undefined') {
         return [];
       } else {
@@ -403,7 +404,7 @@ const App = new Vue({
       if (typeof channel == 'undefined') {
         return false;
       }
-      return typeof _.find(App_this.getMembers(channel.channel_id), {'id': user_id}) !== 'undefined';
+      return typeof _.find(App_this.getMembers(channel), {'id': user_id}) !== 'undefined';
     },
     // Method to get number of unread messages in channel
     getUnread: function(channel_id) {
@@ -519,6 +520,7 @@ const App = new Vue({
     },
     // Function to enable user to edit a message of theirs
     editMessage: function(e) {
+      var App_this = this;
       var message_id = parseInt($(e.target).closest(".chat-message").attr("data-message_id"));
       if (this.states.modal.item && this.states.modal.item.hasOwnProperty("content") && this.states.modal.item.message_id == message_id) {
         var modal = $('#message-edit-modal');
@@ -548,6 +550,7 @@ const App = new Vue({
     },
     // Function to delete a message
     deleteMessage: function(e) {
+      var App_this = this;
       var message_id = parseInt($(e.target).closest(".chat-message").attr("data-message_id"));
 
       this.$dialog.confirm({
@@ -606,6 +609,7 @@ const App = new Vue({
     },
     // Method to edit a channel
     editChannel: function(e) {
+      var App_this = this;
       var formData = $(e.target).serializeArray();
       var members = [];
       Object.keys(formData.filter(data => data.name == 'members')).forEach(function (key) {
@@ -962,7 +966,7 @@ isOnline().then(online => {
 function listenToChannel(channel_id) {
   window['channel_' + channel_id.toString()] = Echo.private('channels.' + channel_id)
      .listen('MessageNew', (e) => {
-        if (!App_this.states.production) {
+        if (!App.states.production) {
           console.log(e);
         }
         if (App.messages.filter(obj => obj.message_id == e.message.message_id).length == 0) {
@@ -973,7 +977,7 @@ function listenToChannel(channel_id) {
                 window['notifications_' + e.message.message_id] = Push.create(
                   App.findUser(e.message.user_id).username + ' (Channel: ' + App.findChannel(e.message.channel_id).name + ')', {
                     body: e.message.content,
-                    icon: 'https://api.adorable.io/avatars/100/' + e.message.user_id, // CHANGE THIS
+                    icon: '/storage/avatars/' + e.message.user_id + '.png',
                     onClick: function() {
                       window.focus();
                       this.close();
@@ -988,7 +992,7 @@ function listenToChannel(channel_id) {
               window['notifications_' + e.message.message_id] = Push.create(
                 App.findUser(e.message.user_id).username + ' (Channel: ' + App.findChannel(e.message.channel_id).name + ')', {
                   body: e.message.content,
-                  icon: 'https://api.adorable.io/avatars/100/' + e.message.user_id, // CHANGE THIS
+                  icon: '/storage/avatars/' + e.message.user_id + '.png',
                   onClick: function() {
                     window.focus();
                     this.close();
@@ -1010,19 +1014,19 @@ function listenToChannel(channel_id) {
         }
      })
      .listen('MessageRemove', (e) => {
-        if (!App_this.states.production) {
+        if (!App.states.production) {
           console.log(e);
         }
         App.messages.splice(App.messages.findIndex(message => message.message_id == e.message.message_id), 1);
      })
      .listen('MessageUpdate', (e) => {
-        if (!App_this.states.production) {
+        if (!App.states.production) {
           console.log(e);
         }
         Vue.set(App.messages, App.messages.findIndex(message => message.message_id == e.message.message_id), e.message);
      })
      .listen('ChannelRemove', (e) => {
-        if (!App_this.states.production) {
+        if (!App.states.production) {
           console.log(e);
         }
         App.channels.splice(App.channels.indexOf(e.channel), 1);
@@ -1034,7 +1038,7 @@ function listenToChannel(channel_id) {
         Echo.leave('channels.' + e.channel.channel_id);
      })
      .listenForWhisper('typing', (e) => {
-         if (!App_this.states.production) {
+         if (!App.states.production) {
            console.log(e);
          }
          var typing_user = {
@@ -1124,7 +1128,7 @@ if (App.logged_in && document.getElementById('messages')) {
         }
         Vue.set(App.users, App.users.findIndex((user_find => user_find.id == e.user.id)), e.user);
         var src = $(".avatar[data-user_id='" + e.user.id + "']").attr('src');
-        if (src.indexOf('?') > 0) {
+        if (src && src.indexOf('?') > 0) {
           src = src.substring(0, src.indexOf('?')) + '?' + Date.now();
         } else {
           src = src + '?' + Date.now();
@@ -1133,6 +1137,7 @@ if (App.logged_in && document.getElementById('messages')) {
         if (e.user.id == App.current_user.id) {
           App.current_user.status = e.user.status;
           App.current_user.username = e.user.username;
+          App.states.account.avatar = src;
         }
      });
 
@@ -1157,6 +1162,9 @@ if (App.logged_in && document.getElementById('messages')) {
             Echo.leave('channels.' + e.channel.channel_id);
           } else {
             if (typeof App.findChannel(e.channel.channel_id) == 'undefined') {
+              if (App.channels.length == 0) {
+                App.states.current_channel = e.channel.channel_id;
+              }
               App.channels.push(e.channel);
               listenToChannel(e.channel.channel_id);
               axios.get('/api/channels/' + e.channel.channel_id + '/messages')

@@ -348,7 +348,10 @@ h6 span {
   height: 42px;
   display: flex;
   align-items: center;
-  text-indent: 30px;
+}
+
+.sidebar-nav li a .channel-icon {
+  margin-right: 15px;
 }
 
 .sidebar-nav li .channel-actions {
@@ -523,7 +526,7 @@ h6 span {
   color: var(--a-colour);
 }
 
-.sidebar-nav h3, .sidebar-nav li i, .sidebar-nav li a {
+.sidebar-nav h3, .sidebar-nav li i {
   text-indent: 30px;
 }
 

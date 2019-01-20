@@ -85,7 +85,7 @@
             </form-modal>
 
             <form-modal :title="'Edit channel'" :message="''" :id="'channel-edit-modal'" :func="editChannel">
-                <template v-if="states.modal.item" slot="body">
+                <template v-if="states.modal.item && states.modal.item.name" slot="body">
                   <div class="form-group form-group-alt">
                       <label for="channel_name">Channel Name</label>
                       <input :value="states.modal.item.name" name="channel_name" type="text" class="form-control form-field" autocomplete="off" required>

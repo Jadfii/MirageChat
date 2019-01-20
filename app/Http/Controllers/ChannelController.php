@@ -70,7 +70,7 @@ class ChannelController extends Controller
       if ($user == null) {
         $user = Auth::user();
       }
-      $messages = Message::where('channel_id', $channel->channel_id);
+      $messages = Message::where('channel_id', $channel->channel_id)->get();
 
       foreach ($messages as $key => $value) {
         $messages[$key] = $value::where('message_id', $value->message_id)->get(Message::$viewable)->first();
