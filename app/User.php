@@ -54,7 +54,7 @@ class User extends Authenticatable implements MustVerifyEmail
      * @var array
      */
     public static $viewable = [
-        'id', 'username', 'email', 'status', 'api_token', 'google2fa_secret',
+        'id', 'username', 'email', 'status', 'api_token', 'google2fa_secret', 'options',
     ];
 
     /**

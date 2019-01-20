@@ -178,6 +178,10 @@
                               <li v-on:click="states.settings.active_tab = 'account_details'" :class="{ active: states.settings.active_tab == 'account_details' }"><a>Account Details</a></li>
                             </div>
                             <div class="settings-nav-heading">
+                              <h3>App Settings</h3>
+                              <li v-on:click="states.settings.active_tab = 'appearance'" :class="{ active: states.settings.active_tab == 'appearance' }"><a>Appearance</a></li>
+                            </div>
+                            <div class="settings-nav-heading">
                               <li v-on:click="states.settings.active_tab = 'app_information'" :class="{ active: states.settings.active_tab == 'app_information' }"><a>App Information</a></li>
                             </div>
                             <div class="settings-nav-heading">
@@ -277,6 +281,18 @@
                                         <button v-if="!current_user.google2fa_secret" @click="enable_2fa" data-toggle="modal" data-target="#enable-2fa-modal" class="btn btn-primary">{{ __('Enable 2FA') }}</button>
                                         <button v-else data-toggle="modal" data-target="#remove-2fa-modal" class="btn btn-primary btn-delete">{{ __('Remove 2FA') }}</button>
                                       </div>
+                                  </settings-frame>
+                                </div>
+                            </div>
+                            <div class="settings-body" :ref="'appearance'" v-show="isActiveTab('appearance')">
+                                <div class="heading-body">
+                                  <h4 class="heading-title">Appearance</h4>
+                                  <settings-frame>
+                                      <div class="heading-desc">
+                                          <h6 class="heading-subtitle">Dark mode</h6>
+                                          <p class="heading-text">Enable dark mode. Easy on the eyes.</p>
+                                      </div>
+                                      <settings-toggle :name="'dark_mode'" :user_options="user_options" :func="changeOption"></settings-toggle>
                                   </settings-frame>
                                 </div>
                             </div>
