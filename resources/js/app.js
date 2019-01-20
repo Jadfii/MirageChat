@@ -1127,7 +1127,7 @@ if (App.logged_in && document.getElementById('messages')) {
         }
         Vue.set(App.users, App.users.findIndex((user_find => user_find.id == e.user.id)), e.user);
         var src = $(".avatar[data-user_id='" + e.user.id + "']").attr('src');
-        if (src.indexOf('?') > 0) {
+        if (src && src.indexOf('?') > 0) {
           src = src.substring(0, src.indexOf('?')) + '?' + Date.now();
         } else {
           src = src + '?' + Date.now();
