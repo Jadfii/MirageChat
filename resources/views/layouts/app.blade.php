@@ -64,7 +64,7 @@
 
             </form>
 
-            <form-modal :title="'Create channel'" :message="''" :id="'channel-create-modal'" :func="createChannel">
+            <form-modal data-reset="true" :title="'Create channel'" :message="''" :id="'channel-create-modal'" :func="createChannel">
                 <template slot="body">
                   <div class="form-group form-group-alt">
                       <label for="channel_name">Channel Name</label>
@@ -119,7 +119,7 @@
                 </template>
             </form-modal>
 
-            <form-modal :title="'Enable 2FA'" :message="''" :id="'enable-2fa-modal'" :func="confirm_2fa">
+            <form-modal data-reset="true" :title="'Enable 2FA'" :message="''" :id="'enable-2fa-modal'" :func="confirm_2fa">
                 <template v-if="states.modal.item" slot="body">
                     <div class="form-group form-group-alt qr-wrapper">
                         <label>Scan QR Code</label>
@@ -138,7 +138,7 @@
                 </template>
             </form-modal>
 
-            <form-modal :title="'Remove 2FA'" :message="''" :id="'remove-2fa-modal'" :func="remove_2fa">
+            <form-modal data-reset="true" :title="'Remove 2FA'" :message="''" :id="'remove-2fa-modal'" :func="remove_2fa">
                 <template slot="body">
                     <div class="form-group form-group-alt">
                         <label for="verify_code">Authenticator code</label>
