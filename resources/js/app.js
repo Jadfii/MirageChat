@@ -196,12 +196,14 @@ const App = new Vue({
   watch: {
     messages: function() {
       var App_this = this;
-      var new_message = this.messages[this.messages.length - 1];
-      Vue.nextTick(function() {
-        if (App_this.messages_bottom && new_message.channel_id == App_this.states.current_channel) {
-          App_this.scrollBottomMessages();
-        }
-      });
+      if (this.messages.length > 0) {
+        var new_message = this.messages[this.messages.length - 1];
+        Vue.nextTick(function() {
+          if (App_this.messages_bottom && new_message.channel_id == App_this.states.current_channel) {
+            App_this.scrollBottomMessages();
+          }
+        });
+      }
     },
     'states.settings.display': function() {
       if (this.states.settings.account_edit) {
@@ -283,7 +285,7 @@ const App = new Vue({
     // Get users with access to current channel
     active_users: function() {
       if (this.active_channel) {
-        return this.getMembers(this.states.current_channel);
+        return this.getMembers(this.findChannel(this.states.current_channel));
       } else {
         return this.users_sorted;
       }
@@ -388,9 +390,8 @@ const App = new Vue({
       return this.messages.filter(message => message.channel_id == channel_id);
     },
     // Method to get members as array from channel
-    getMembers: function(channel_id) {
+    getMembers: function(channel) {
       var App_this = this;
-      var channel = this.findChannel(channel_id);
       if (typeof channel == 'undefined') {
         return [];
       } else {
@@ -403,7 +404,7 @@ const App = new Vue({
       if (typeof channel == 'undefined') {
         return false;
       }
-      return typeof _.find(App_this.getMembers(channel.channel_id), {'id': user_id}) !== 'undefined';
+      return typeof _.find(App_this.getMembers(channel), {'id': user_id}) !== 'undefined';
     },
     // Method to get number of unread messages in channel
     getUnread: function(channel_id) {
@@ -1161,6 +1162,9 @@ if (App.logged_in && document.getElementById('messages')) {
             Echo.leave('channels.' + e.channel.channel_id);
           } else {
             if (typeof App.findChannel(e.channel.channel_id) == 'undefined') {
+              if (App.channels.length == 0) {
+                App.states.current_channel = e.channel.channel_id;
+              }
               App.channels.push(e.channel);
               listenToChannel(e.channel.channel_id);
               axios.get('/api/channels/' + e.channel.channel_id + '/messages')
