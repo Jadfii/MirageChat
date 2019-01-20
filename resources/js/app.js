@@ -519,6 +519,7 @@ const App = new Vue({
     },
     // Function to enable user to edit a message of theirs
     editMessage: function(e) {
+      var App_this = this;
       var message_id = parseInt($(e.target).closest(".chat-message").attr("data-message_id"));
       if (this.states.modal.item && this.states.modal.item.hasOwnProperty("content") && this.states.modal.item.message_id == message_id) {
         var modal = $('#message-edit-modal');
@@ -548,6 +549,7 @@ const App = new Vue({
     },
     // Function to delete a message
     deleteMessage: function(e) {
+      var App_this = this;
       var message_id = parseInt($(e.target).closest(".chat-message").attr("data-message_id"));
 
       this.$dialog.confirm({
@@ -606,6 +608,7 @@ const App = new Vue({
     },
     // Method to edit a channel
     editChannel: function(e) {
+      var App_this = this;
       var formData = $(e.target).serializeArray();
       var members = [];
       Object.keys(formData.filter(data => data.name == 'members')).forEach(function (key) {
@@ -962,7 +965,7 @@ isOnline().then(online => {
 function listenToChannel(channel_id) {
   window['channel_' + channel_id.toString()] = Echo.private('channels.' + channel_id)
      .listen('MessageNew', (e) => {
-        if (!App_this.states.production) {
+        if (!App.states.production) {
           console.log(e);
         }
         if (App.messages.filter(obj => obj.message_id == e.message.message_id).length == 0) {
@@ -1010,19 +1013,19 @@ function listenToChannel(channel_id) {
         }
      })
      .listen('MessageRemove', (e) => {
-        if (!App_this.states.production) {
+        if (!App.states.production) {
           console.log(e);
         }
         App.messages.splice(App.messages.findIndex(message => message.message_id == e.message.message_id), 1);
      })
      .listen('MessageUpdate', (e) => {
-        if (!App_this.states.production) {
+        if (!App.states.production) {
           console.log(e);
         }
         Vue.set(App.messages, App.messages.findIndex(message => message.message_id == e.message.message_id), e.message);
      })
      .listen('ChannelRemove', (e) => {
-        if (!App_this.states.production) {
+        if (!App.states.production) {
           console.log(e);
         }
         App.channels.splice(App.channels.indexOf(e.channel), 1);
@@ -1034,7 +1037,7 @@ function listenToChannel(channel_id) {
         Echo.leave('channels.' + e.channel.channel_id);
      })
      .listenForWhisper('typing', (e) => {
-         if (!App_this.states.production) {
+         if (!App.states.production) {
            console.log(e);
          }
          var typing_user = {
