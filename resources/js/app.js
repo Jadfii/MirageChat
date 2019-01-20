@@ -1136,6 +1136,7 @@ if (App.logged_in && document.getElementById('messages')) {
         if (e.user.id == App.current_user.id) {
           App.current_user.status = e.user.status;
           App.current_user.username = e.user.username;
+          App.states.account.avatar = src;
         }
      });
 
