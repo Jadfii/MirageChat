@@ -251,8 +251,18 @@ const App = new Vue({
     },
   },
   computed: {
+    // Check if message container is scrolled to bottom
     messages_bottom: function() {
       return this.states.messages.scroll.outer_height + this.states.messages.scroll.position == this.states.messages.scroll.height;
+    },
+    // Get current user options as object
+    user_options: function() {
+      var App_this = this;
+      if (this.current_user.options) {
+        return JSON.parse(App_this.current_user.options);
+      } else {
+        return {};
+      }
     },
     // Computed to sort users by username
     users_sorted: function() {
@@ -950,6 +960,22 @@ const App = new Vue({
          }
          modal.find(".form-error").text(error.response.data);
       });
+    },
+    // Method to change a user option
+    changeOption: function(e) {
+      var App_this = this;
+      var options = this.user_options;
+      var option = $(e.target).attr('name');
+      var value = $(e.target).val();
+
+      if (value == 'on' || value == 'off') {
+        value = (value == 'on');
+      }
+
+      if (!options.hasOwnProperty(option)) {
+        options[option] = value;
+        this.current_user.options = JSON.stringify(options);
+      }
     },
   },
 });

@@ -1723,7 +1723,8 @@ img.chat-markup {
 
 .heading-section {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: center;
   margin-bottom: 30px;
 }
 
