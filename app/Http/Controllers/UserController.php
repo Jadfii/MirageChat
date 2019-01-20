@@ -120,7 +120,7 @@ class UserController extends Controller
                 }
               },
             ],
-            'password' => 'required|confirmed',
+            'password' => 'required|string|min:6|confirmed',
          ]);
 
          unset($data['password_old']);
