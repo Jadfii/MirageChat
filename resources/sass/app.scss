@@ -36,6 +36,7 @@ $bad-colour: #ea2e49;
     --sidebar-left-width: 300px;
     --a-colour: #a3b4cc;
     --a-hover-colour: #e5eaf1;
+    --subhead-colour: #868a9d;
     --good-colour: #22b66e;
     --bad-colour: #ea2e49;
 
@@ -58,6 +59,10 @@ $bad-colour: #ea2e49;
 .app-container.dark-mode h6,
 .app-container.dark-mode .chat-message {
   color: #fff;
+}
+
+.app-container.dark-mode h3 {
+  color: var(--subhead-colour);
 }
 
 .app-container.dark-mode .content,
@@ -205,7 +210,7 @@ h1 {
 }
 
 h3 {
-  color: #868a9d;
+  color: var(--subhead-colour);
   font-weight: normal;
   font-size: 16px;
 }
@@ -820,7 +825,7 @@ form, .form-wrapper {
   left: 12px;
   top: 15px;
   font-size: 16px;
-  color: #868a9d;
+  color: var(--subhead-colour);
 }
 
 .form-group-alt {
