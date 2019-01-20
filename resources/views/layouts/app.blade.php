@@ -222,35 +222,35 @@
                                                   <div class="info-wrapper">
                                                       <div class="form-group">
                                                           <input name="username" :value="current_user.username" type="text" class="form-control form-field">
-                                                          <label :class="{ active: current_user.username }">{{ __('Username') }}</label>
+                                                          <label for="username" :class="{ active: current_user.username }">{{ __('Username') }}</label>
                                                           <div class="form-error"></div>
                                                       </div>
 
                                                       <div class="form-group">
                                                           <input name="email" :value="current_user.email" type="text" class="form-control form-field">
-                                                          <label :class="{ active: current_user.email }">{{ __('Email') }}</label>
+                                                          <label for="email" :class="{ active: current_user.email }">{{ __('Email') }}</label>
                                                           <div class="form-error"></div>
                                                       </div>
 
                                                       <h6 class="heading-subtitle">{{ __('Change password') }}</h6>
 
                                                       <div class="form-group">
-                                                        <input id="password" type="password" class="form-control form-field" name="password" value="">
-                                                        <label for="password">{{ __('Current password') }}</label>
+                                                        <input id="password_old" type="password" class="form-control form-field" name="password_old" value="">
+                                                        <label for="password_old">{{ __('Current password') }}</label>
                                                       </div>
 
                                                       <div class="form-row">
                                                         <div class="col">
                                                           <div class="form-group">
-                                                            <input id="password_new" type="password" class="form-control form-field" name="password_new" value="">
-                                                            <label for="password_new">{{ __('New password') }}</label>
+                                                            <input id="password" type="password" class="form-control form-field" name="password" value="">
+                                                            <label for="password">{{ __('New password') }}</label>
                                                           </div>
                                                         </div>
 
                                                         <div class="col">
                                                           <div class="form-group">
-                                                            <input id="password_new_confirm" type="password" class="form-control form-field" name="password_new_confirm" value="">
-                                                            <label for="password_new_confirm">{{ __('Confirm new password') }}</label>
+                                                            <input id="password_confirmation" type="password" class="form-control form-field" name="password_confirmation" value="">
+                                                            <label for="password_confirmation">{{ __('Confirm new password') }}</label>
                                                           </div>
                                                         </div>
                                                       </div>

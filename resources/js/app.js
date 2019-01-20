@@ -704,6 +704,7 @@ const App = new Vue({
              console.log(response);
            }
            App_this.current_user = response.data;
+           App_this.states.settings.account_edit = false;
          })
          .catch(function (error) {
            if (!App_this.states.production) {
@@ -711,7 +712,7 @@ const App = new Vue({
            }
            App_this.$dialog.alert({
              title: error.response.data.message,
-             body: error.response.data.errors[0][0],
+             body: Object.values(error.response.data.errors)[0][0],
            }, {
              animation: 'none',
              okText: 'Okay',
@@ -721,8 +722,6 @@ const App = new Vue({
            });
         });
       }
-
-      this.states.settings.account_edit = false;
     },
     // Handle avatar change on account edit page
     editAvatar: function(e) {
@@ -1218,13 +1217,13 @@ $(document).on("mouseleave click", '[data-toggle="tooltip"]', function(e) {
 });
 
 // Allow floating labels on input boxes
-$(".form-field").on("change paste keyup blur focus", function(e) {
-    var element_label = $("label[for='" + $(this).attr('name') + "']");
-    if (!$(this).val()) {
-        $(element_label).removeClass("active");
-    } else {
-        $(element_label).addClass("active");
-    }
+$(document).on("change paste keyup blur focus", ".form-field", function(e) {
+  var element_label = $("label[for='" + $(this).attr('name') + "']");
+  if (!$(this).val()) {
+      $(element_label).removeClass("active");
+  } else {
+      $(element_label).addClass("active");
+  }
 });
 
 // On modal close, clear form inputs if data-reset is defined
