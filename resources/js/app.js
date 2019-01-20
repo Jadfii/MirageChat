@@ -24,6 +24,7 @@ Vue.component('status-badge', require('./components/StatusBadge.vue').default);
 Vue.component('avatar', require('./components/Avatar.vue').default);
 Vue.component('user-frame', require('./components/UserFrame.vue').default);
 Vue.component('settings-frame', require('./components/SettingsFrame.vue').default);
+Vue.component('settings-toggle', require('./components/SettingsToggle.vue').default);
 Vue.component('message-frame', require('./components/MessageFrame.vue').default);
 
 /**
@@ -251,8 +252,18 @@ const App = new Vue({
     },
   },
   computed: {
+    // Check if message container is scrolled to bottom
     messages_bottom: function() {
       return this.states.messages.scroll.outer_height + this.states.messages.scroll.position == this.states.messages.scroll.height;
+    },
+    // Get current user options as object
+    user_options: function() {
+      var App_this = this;
+      if (this.current_user.options) {
+        return JSON.parse(App_this.current_user.options);
+      } else {
+        return {};
+      }
     },
     // Computed to sort users by username
     users_sorted: function() {
@@ -950,6 +961,20 @@ const App = new Vue({
          }
          modal.find(".form-error").text(error.response.data);
       });
+    },
+    // Method to change a user option
+    changeOption: function(e) {
+      var App_this = this;
+      var options = this.user_options;
+      var option = $(e.target).attr('name');
+      if ($(e.target).attr('type') == 'checkbox') {
+        var value = $(e.target)[0].checked;
+      } else {
+        var value = $(e.target).val();
+      }
+
+      options[option] = value;
+      this.current_user.options = JSON.stringify(options);
     },
   },
 });
