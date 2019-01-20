@@ -299,7 +299,7 @@
                             <div class="settings-body" :ref="'app_information'" v-show="isActiveTab('app_information')">
                                 <div class="heading-body">
                                   <h4 class="heading-title">App Information</h4>
-                                  <settings-frame>
+                                  <settings-frame class="flex-column">
                                       <p><b>Version: </b>{{ Version::version() }}</p>
                                       <p><b>Build: </b>{{ Version::build() }}</p>
                                   </settings-frame>
