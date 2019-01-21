@@ -974,7 +974,22 @@ const App = new Vue({
       }
 
       options[option] = value;
-      this.current_user.options = JSON.stringify(options);
+      options = JSON.stringify(options);
+
+      axios.post('/api/users/' + App_this.current_user.id, {
+        'options': options,
+      })
+       .then(function (response) {
+         if (!App_this.states.production) {
+           console.log(response);
+         }
+         App_this.current_user.options = options;
+       })
+       .catch(function (error) {
+         if (!App_this.states.production) {
+           console.log(error);
+         }
+      });
     },
   },
 });
