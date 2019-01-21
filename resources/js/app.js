@@ -5,6 +5,8 @@
  */
 
 require('./bootstrap');
+/* Load Sentry error logging */
+import * as Sentry from '@sentry/browser';
 import VuejsDialog from 'vuejs-dialog';
 import VTooltip from 'v-tooltip';
 import { focus } from 'vue-focus';
@@ -14,6 +16,11 @@ window.autosize = require('autosize');
 window.isOnline = require('is-online');
 window.away = require('away');
 window.Push = require('push.js');
+
+/**
+ * Initialise Sentry
+ */
+Sentry.init({ dsn: 'https://3197435afdfa48688b81d083c5004db0@sentry.io/1376197' });
 
 /**
  * Load custom Vue components and register them from their respective files
