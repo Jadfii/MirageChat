@@ -27,7 +27,7 @@ class User extends Authenticatable implements MustVerifyEmail
      * @var array
      */
     protected $fillable = [
-        'username', 'email', 'password', 'api_token', 'google2fa_secret',
+        'username', 'email', 'password', 'api_token', 'google2fa_secret', 'options',
     ];
 
     /**
@@ -45,7 +45,7 @@ class User extends Authenticatable implements MustVerifyEmail
      * @var array
      */
     public $options = [
-        'desktop_notifications', 'message_sounds'
+        'desktop_notifications', 'message_sounds', 'dark_mode'
     ];
 
     /**
@@ -63,7 +63,7 @@ class User extends Authenticatable implements MustVerifyEmail
      * @var array
      */
     public $editable = [
-        'username', 'email', 'password',
+        'username', 'email', 'password', 'options',
     ];
 
     /**
