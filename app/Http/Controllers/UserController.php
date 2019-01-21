@@ -128,6 +128,23 @@ class UserController extends Controller
          $data['password'] = Hash::make($data['password']);
       }
 
+      if (isset($data['options'])) {
+        $request->validate([
+            'options' => [
+              'required',
+              'json',
+              function ($attribute, $value, $fail) use ($user) {
+                foreach (json_decode($value, true) as $key => $val) {
+                  // Ensure the option is a valid user option
+                  if (!in_array($val, $user->options)) {
+                    $fail($val.' is not a valid option.');
+                  }
+                }
+              },
+            ],
+         ]);
+      }
+
       if ($request->hasFile('avatar')) {
         $request->validate([
             'avatar' => 'image|mimes:jpeg,png,jpg|max:5120'
