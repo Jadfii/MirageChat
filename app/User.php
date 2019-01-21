@@ -45,7 +45,7 @@ class User extends Authenticatable implements MustVerifyEmail
      * @var array
      */
     public $options = [
-        'desktop_notifications', 'message_sounds'
+        'desktop_notifications', 'message_sounds', 'dark_mode'
     ];
 
     /**
