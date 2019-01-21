@@ -136,8 +136,8 @@ class UserController extends Controller
               function ($attribute, $value, $fail) use ($user) {
                 foreach (json_decode($value, true) as $key => $val) {
                   // Ensure the option is a valid user option
-                  if (!in_array($val, $user->options)) {
-                    $fail($val.' is not a valid option.');
+                  if (!in_array($key, $user->options)) {
+                    $fail($key.' is not a valid option.');
                   }
                 }
               },
