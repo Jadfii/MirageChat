@@ -175,14 +175,14 @@
                         <ul class="sidebar-nav settings-nav">
                             <div class="settings-nav-heading">
                               <h3>My Account</h3>
-                              <li v-on:click="states.settings.active_tab = 'account_details'" :class="{ active: states.settings.active_tab == 'account_details' }"><a>Account Details</a></li>
+                              <li data-setting="account_details" @click="changeSetting" :class="{ active: states.settings.active_tab == 'account_details' }"><a>Account Details</a></li>
                             </div>
                             <div class="settings-nav-heading">
                               <h3>App Settings</h3>
-                              <li v-on:click="states.settings.active_tab = 'appearance'" :class="{ active: states.settings.active_tab == 'appearance' }"><a>Appearance</a></li>
+                              <li data-setting="appearance" @click="changeSetting" :class="{ active: states.settings.active_tab == 'appearance' }"><a>Appearance</a></li>
                             </div>
                             <div class="settings-nav-heading">
-                              <li v-on:click="states.settings.active_tab = 'app_information'" :class="{ active: states.settings.active_tab == 'app_information' }"><a>App Information</a></li>
+                              <li data-setting="app_information" @click="changeSetting" :class="{ active: states.settings.active_tab == 'app_information' }"><a>App Information</a></li>
                             </div>
                             <div class="settings-nav-heading">
                               <li onclick="event.preventDefault();document.getElementById('logout-form').submit();"><a class="bad">Sign Out</a></li>
@@ -192,7 +192,7 @@
                   <div class="settings-content-wrapper cards-scroll inline-scroll scroll-light">
                     <div class="settings-content">
                         <div>
-                            <div class="settings-body" :ref="'account_details'" v-show="isActiveTab('account_details')">
+                            <div v-show="isActiveTab('account_details')" class="settings-body">
                                 <div class="heading-body">
                                   <h4 class="heading-title">Account Details</h4>
                                   <settings-frame>
@@ -284,7 +284,7 @@
                                   </settings-frame>
                                 </div>
                             </div>
-                            <div class="settings-body" :ref="'appearance'" v-show="isActiveTab('appearance')">
+                            <div v-show="isActiveTab('appearance')" class="settings-body">
                                 <div class="heading-body">
                                   <h4 class="heading-title">Appearance</h4>
                                   <settings-frame>
@@ -296,7 +296,7 @@
                                   </settings-frame>
                                 </div>
                             </div>
-                            <div class="settings-body" :ref="'app_information'" v-show="isActiveTab('app_information')">
+                            <div v-show="isActiveTab('app_information')" class="settings-body">
                                 <div class="heading-body">
                                   <h4 class="heading-title">App Information</h4>
                                   <settings-frame class="flex-column">

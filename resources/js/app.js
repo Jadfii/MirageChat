@@ -998,6 +998,16 @@ const App = new Vue({
          }
       });
     },
+    // Method to get setting name from element (data-setting, ref)
+    getSetting: function(e) {
+      var App_this = this;
+      return $(e.target).closest('li').data('setting');
+    },
+    // Method to change active setting
+    changeSetting: function(e) {
+      var App_this = this;
+      this.states.settings.active_tab = this.getSetting(e);
+    },
   },
 });
 
