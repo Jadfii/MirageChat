@@ -179,6 +179,7 @@
                             </div>
                             <div class="settings-nav-heading">
                               <h3>App Settings</h3>
+                              <li data-setting="notifications" @click="changeSetting" :class="{ active: states.settings.active_tab == 'notifications' }"><a>Notifications</a></li>
                               <li data-setting="appearance" @click="changeSetting" :class="{ active: states.settings.active_tab == 'appearance' }"><a>Appearance</a></li>
                             </div>
                             <div class="settings-nav-heading">
@@ -293,6 +294,25 @@
                                           <p class="heading-text">Enable dark mode. Easy on the eyes.</p>
                                       </div>
                                       <settings-toggle :name="'dark_mode'" :user_options="user_options" :func="changeOption"></settings-toggle>
+                                  </settings-frame>
+                                </div>
+                            </div>
+                            <div v-show="isActiveTab('notifications')" class="settings-body">
+                                <div class="heading-body">
+                                  <h4 class="heading-title">Notifications</h4>
+                                  <settings-frame>
+                                      <div class="heading-desc">
+                                          <h6 class="heading-subtitle">Desktop Notifications</h6>
+                                          <p class="heading-text">Turn on desktop notifications to be alerted when a new message is recieved.</p>
+                                      </div>
+                                      <settings-toggle :name="'desktop_notifications'" :user_options="user_options" :func="changeOption"></settings-toggle>
+                                  </settings-frame>
+                                  <settings-frame>
+                                      <div class="heading-desc">
+                                          <h6 class="heading-subtitle">Message Sounds</h6>
+                                          <p class="heading-text">Recieve an alert sound when on new messages.</p>
+                                      </div>
+                                      <settings-toggle :name="'message_sounds'" :user_options="user_options" :func="changeOption"></settings-toggle>
                                   </settings-frame>
                                 </div>
                             </div>
