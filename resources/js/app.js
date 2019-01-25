@@ -214,9 +214,15 @@ const App = new Vue({
       }
     },
     'states.settings.display': function() {
-      if (this.states.settings.account_edit) {
-        this.states.settings.account_edit = false;
-      }
+      var App_this = this;
+      // Allow time for animation
+      setTimeout(function() {
+        if (App_this.states.settings.account_edit) {
+          App_this.states.settings.account_edit = false;
+        }
+        // Set active tab to first tab
+        App_this.states.settings.active_tab = $('[data-setting]').first().data('setting');
+      }, 500);
     },
     'states.current_channel': function() {
       var App_this = this;
