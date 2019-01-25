@@ -57,7 +57,9 @@ $bad-colour: #ea2e49;
 .app-container.dark-mode h4,
 .app-container.dark-mode h5,
 .app-container.dark-mode h6,
-.app-container.dark-mode .chat-message {
+.app-container.dark-mode .chat-message,
+.app-container.dark-mode #message
+ {
   color: #fff;
 }
 
@@ -190,6 +192,16 @@ body > div:not(.app-container) {
   background-color: #fff;
   width: .6em;
   height: .6em;
+}
+
+/* SENTRY CSS */
+.sentry-error-embed .form-submit {
+  display: flex;
+  align-items: center;
+}
+
+.sentry-error-embed .form-submit .btn {
+  height: auto;
 }
 
 /* MAIN CSS */
@@ -1500,6 +1512,16 @@ img.chat-markup {
 
 .chat-box-inner {
   border: 2px solid var(--outline-colour);
+  display: flex;
+  align-items: center;
+}
+
+#message {
+  min-height: 0;
+  height: 40px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  border: none;
 }
 
 .autocomplete-container {
@@ -1569,9 +1591,8 @@ img.chat-markup {
 }
 
 .chat-send {
-  position: absolute;
-  top: 15px;
-  right: 12px;
+  margin-right: 12px;
+  max-height: 24px;
 }
 
 .chat-typing {

@@ -59,6 +59,10 @@
                 </div>
             </transition>
 
+            <audio id="message_sound">
+                <source src="{{ asset('sounds/light.mp3') }}"></source>
+            </audio>
+
             <form id="logout-form" action="{{ route('logout') }}" method="POST" style="display: none;">
                 @csrf
 
@@ -179,6 +183,7 @@
                             </div>
                             <div class="settings-nav-heading">
                               <h3>App Settings</h3>
+                              <li data-setting="notifications" @click="changeSetting" :class="{ active: states.settings.active_tab == 'notifications' }"><a>Notifications</a></li>
                               <li data-setting="appearance" @click="changeSetting" :class="{ active: states.settings.active_tab == 'appearance' }"><a>Appearance</a></li>
                             </div>
                             <div class="settings-nav-heading">
@@ -296,10 +301,29 @@
                                   </settings-frame>
                                 </div>
                             </div>
+                            <div v-show="isActiveTab('notifications')" class="settings-body">
+                                <div class="heading-body">
+                                  <h4 class="heading-title">Notifications</h4>
+                                  <settings-frame>
+                                      <div class="heading-desc">
+                                          <h6 class="heading-subtitle">Desktop Notifications</h6>
+                                          <p class="heading-text">Turn on desktop notifications to be alerted when a new message is recieved.</p>
+                                      </div>
+                                      <settings-toggle :name="'desktop_notifications'" :user_options="user_options" :func="changeOption"></settings-toggle>
+                                  </settings-frame>
+                                  <settings-frame>
+                                      <div class="heading-desc">
+                                          <h6 class="heading-subtitle">Message Sounds</h6>
+                                          <p class="heading-text">Recieve an alert sound when on new messages.</p>
+                                      </div>
+                                      <settings-toggle :name="'message_sounds'" :user_options="user_options" :func="changeOption"></settings-toggle>
+                                  </settings-frame>
+                                </div>
+                            </div>
                             <div v-show="isActiveTab('app_information')" class="settings-body">
                                 <div class="heading-body">
                                   <h4 class="heading-title">App Information</h4>
-                                  <settings-frame>
+                                  <settings-frame class="flex-column">
                                       <p><b>Version: </b>{{ Version::version() }}</p>
                                       <p><b>Build: </b>{{ Version::build() }}</p>
                                   </settings-frame>

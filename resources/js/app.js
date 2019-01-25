@@ -5,6 +5,8 @@
  */
 
 require('./bootstrap');
+/* Load Sentry error logging */
+import * as Sentry from '@sentry/browser';
 import VuejsDialog from 'vuejs-dialog';
 import VTooltip from 'v-tooltip';
 import { focus } from 'vue-focus';
@@ -14,6 +16,28 @@ window.autosize = require('autosize');
 window.isOnline = require('is-online');
 window.away = require('away');
 window.Push = require('push.js');
+
+/**
+ * Initialise Sentry
+ */
+Sentry.init({
+  dsn: 'https://3197435afdfa48688b81d083c5004db0@sentry.io/1376197',
+  beforeSend(event) {
+    // Check if it is an exception, if so, show the report dialog
+    if (event.exception) {
+      Sentry.showReportDialog({
+        'title': "You've encountered an error.",
+        'subtitle': "If you'd like to help, tell us what happened below.",
+        'subtitle2': "If the error was not obvious, feel free to leave this form.",
+        'user': {
+          'email': (App.current_user) ? App.current_user.email : "",
+          'name': (App.current_user) ? App.current_user.username : "",
+        },
+      });
+    }
+    return event;
+  }
+});
 
 /**
  * Load custom Vue components and register them from their respective files
@@ -207,9 +231,15 @@ const App = new Vue({
       }
     },
     'states.settings.display': function() {
-      if (this.states.settings.account_edit) {
-        this.states.settings.account_edit = false;
-      }
+      var App_this = this;
+      // Allow time for animation
+      setTimeout(function() {
+        if (App_this.states.settings.account_edit) {
+          App_this.states.settings.account_edit = false;
+        }
+        // Set active tab to first tab
+        App_this.states.settings.active_tab = $('[data-setting]').first().data('setting');
+      }, 500);
     },
     'states.current_channel': function() {
       var App_this = this;
@@ -1020,10 +1050,26 @@ function listenToChannel(channel_id) {
           console.log(e);
         }
         if (App.messages.filter(obj => obj.message_id == e.message.message_id).length == 0) {
-          if (!document.hasFocus()) {
+          if (!document.hasFocus() && App.current_user.id !== e.message.user_id) {
             e.message.read = false;
-            if (!Push.Permission.has()) {
-              Push.Permission.request(function() {
+            if (App.user_options.desktop_notifications) {
+              if (!Push.Permission.has()) {
+                Push.Permission.request(function() {
+                  window['notifications_' + e.message.message_id] = Push.create(
+                    App.findUser(e.message.user_id).username + ' (Channel: ' + App.findChannel(e.message.channel_id).name + ')', {
+                      body: e.message.content,
+                      icon: '/storage/avatars/' + e.message.user_id + '.png',
+                      onClick: function() {
+                        window.focus();
+                        this.close();
+                        App.states.current_channel = e.message.channel_id;
+                        App.readChannel(e.message.channel_id);
+                      }
+                  });
+                }, function() {
+                  console.log('Please allow notifications to recieve desktop push alerts.');
+                });
+              } else {
                 window['notifications_' + e.message.message_id] = Push.create(
                   App.findUser(e.message.user_id).username + ' (Channel: ' + App.findChannel(e.message.channel_id).name + ')', {
                     body: e.message.content,
@@ -1035,21 +1081,7 @@ function listenToChannel(channel_id) {
                       App.readChannel(e.message.channel_id);
                     }
                 });
-              }, function() {
-                console.log('Please allow notifications to recieve desktop push alerts.');
-              });
-            } else {
-              window['notifications_' + e.message.message_id] = Push.create(
-                App.findUser(e.message.user_id).username + ' (Channel: ' + App.findChannel(e.message.channel_id).name + ')', {
-                  body: e.message.content,
-                  icon: '/storage/avatars/' + e.message.user_id + '.png',
-                  onClick: function() {
-                    window.focus();
-                    this.close();
-                    App.states.current_channel = e.message.channel_id;
-                    App.readChannel(e.message.channel_id);
-                  }
-              });
+              }
             }
           } else {
             if (App.states.current_channel == e.message.channel_id) {
@@ -1061,6 +1093,10 @@ function listenToChannel(channel_id) {
             }
           }
           App.messages.push(e.message);
+          // Play sound if user has message_sounds set to true
+          if (App.user_options.message_sounds && App.current_user.id !== e.message.user_id) {
+            document.getElementById('message_sound').play();
+          }
         }
      })
      .listen('MessageRemove', (e) => {
