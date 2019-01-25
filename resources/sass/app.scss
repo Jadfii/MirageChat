@@ -1502,6 +1502,16 @@ img.chat-markup {
 
 .chat-box-inner {
   border: 2px solid var(--outline-colour);
+  display: flex;
+  align-items: center;
+}
+
+#message {
+  min-height: 0;
+  height: 40px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  border: none;
 }
 
 .autocomplete-container {
@@ -1571,9 +1581,8 @@ img.chat-markup {
 }
 
 .chat-send {
-  position: absolute;
-  top: 15px;
-  right: 12px;
+  margin-right: 12px;
+  max-height: 24px;
 }
 
 .chat-typing {
