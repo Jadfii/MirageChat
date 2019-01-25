@@ -194,6 +194,16 @@ body > div:not(.app-container) {
   height: .6em;
 }
 
+/* SENTRY CSS */
+.sentry-error-embed .form-submit {
+  display: flex;
+  align-items: center;
+}
+
+.sentry-error-embed .form-submit .btn {
+  height: auto;
+}
+
 /* MAIN CSS */
 
 html, body {

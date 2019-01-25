@@ -20,7 +20,24 @@ window.Push = require('push.js');
 /**
  * Initialise Sentry
  */
-Sentry.init({ dsn: 'https://3197435afdfa48688b81d083c5004db0@sentry.io/1376197' });
+Sentry.init({
+  dsn: 'https://3197435afdfa48688b81d083c5004db0@sentry.io/1376197',
+  beforeSend(event) {
+    // Check if it is an exception, if so, show the report dialog
+    if (event.exception) {
+      Sentry.showReportDialog({
+        'title': "You've encountered an error.",
+        'subtitle': "If you'd like to help, tell us what happened below.",
+        'subtitle2': "If the error was not obvious, feel free to leave this form.",
+        'user': {
+          'email': (App.current_user) ? App.current_user.email : "",
+          'name': (App.current_user) ? App.current_user.username : "",
+        },
+      });
+    }
+    return event;
+  }
+});
 
 /**
  * Load custom Vue components and register them from their respective files
