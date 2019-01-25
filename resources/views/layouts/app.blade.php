@@ -59,6 +59,10 @@
                 </div>
             </transition>
 
+            <audio id="message_sound">
+                <source src="{{ asset('sounds/light.mp3') }}"></source>
+            </audio>
+
             <form id="logout-form" action="{{ route('logout') }}" method="POST" style="display: none;">
                 @csrf
 
