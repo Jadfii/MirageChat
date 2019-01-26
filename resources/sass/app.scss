@@ -108,6 +108,20 @@ $bad-colour: #ea2e49;
   color: #fff;
 }
 
+.app-container.dark-mode ~ .v-tooltip.popover .popover-inner {
+  background: var(--main-bg-colour);
+}
+
+.app-container.dark-mode ~ .v-tooltip.popover .popover-inner h5 {
+  color: #fff;
+}
+
+.app-container.dark-mode ~ .v-tooltip.popover .popover-arrow,
+.app-container.dark-mode ~ .v-tooltip.popover .popover-inner .status-badge
+{
+  border-color: var(--main-bg-colour);
+}
+
 body > div:not(.app-container) {
   z-index: 99999;
 }
@@ -192,6 +206,11 @@ body > div:not(.app-container) {
   background-color: #fff;
   width: .6em;
   height: .6em;
+}
+
+/* TOOLTIP CSS */
+.v-tooltip.popover .popover-inner {
+  background: #fff;
 }
 
 /* SENTRY CSS */
@@ -401,14 +420,16 @@ h6 span {
   position: relative;
 }
 
-.mb-20, .sidebar-nav li.bottom, .sidebar-nav h3 {
+.mb-20, .sidebar-nav li.bottom {
   margin-bottom: 20px;
 }
 
 .sidebar-nav h3 {
   text-transform: uppercase;
   font-size: 12px;
-  letter-spacing: 2px;
+  letter-spacing: 1px;
+  font-weight: bold;
+  margin-bottom: 7px;
 }
 
 .sidebar-nav li a {
@@ -1581,7 +1602,7 @@ img.chat-markup {
 }
 
 .chat-timestamp {
-  margin-left: 10px;
+  margin-left: 5px;
   color: var(--a-colour);
   font-size: 12px;
 }

@@ -362,7 +362,7 @@
                                   </div>
                             </div>
                             <ul class="sidebar-nav" id="channels">
-                              <h3>Channels</h3>
+                              <h3>Channels - @{{ channels.length }}</h3>
                               <li v-for="(channel, key, index) in channels" v-bind:data-channel_id="channel.channel_id" v-bind:class="{ active: channel.channel_id == states.current_channel }">
                                 <a v-on:click="states.current_channel = channel.channel_id">
                                     <i class="material-icons">people</i>
@@ -386,7 +386,7 @@
                       <div v-show="states.userlist" class="sidebar sidebar-wrapper sidebar-toggle sidebar-left inline-scroll scroll-dark">
                         <ul class="sidebar-nav" id="users">
                             <a @click="states.userlist = false" class="close icon"><i class="material-icons">close</i></a>
-                              <h3 v-if="usersStatus.online.length">Online</h3>
+                              <h3 v-if="usersStatus.online.length">Online - @{{ usersStatus.online.length }}</h3>
                               <li v-for="(user, index) in usersStatus.online" :class="{ bottom: isLast(index, usersStatus.online) }">
                                 <a data-toggle="popover" data-placement="left" :data-user_id="user.id">
                                     <div class="channel-icon">
@@ -395,7 +395,7 @@
                                     @{{ user.username }}
                                 </a>
                               </li>
-                              <h3 v-if="usersStatus.offline.length">Offline</h3>
+                              <h3 v-if="usersStatus.offline.length">Offline - @{{ usersStatus.offline.length }}</h3>
                               <li v-for="(user, index) in usersStatus.offline" :class="{ bottom: isLast(index, usersStatus.offline) }">
                                 <a data-toggle="popover" data-placement="left" :data-user_id="user.id">
                                     <div class="channel-icon">
