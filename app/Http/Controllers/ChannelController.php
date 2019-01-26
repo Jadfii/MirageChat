@@ -35,12 +35,11 @@ class ChannelController extends Controller
     if ($user == null) {
       $user = Auth::user();
     }
-    $channels = Channel::all();
 
-    foreach ($channels as $key => $value) {
-      $channels[$key] = $value::where('channel_id', $value->channel_id)->get(Channel::$viewable)->first();
-      if (!Channel::hasPermission('view', $user, $value)) {
-        unset($channels[$key]);
+    $channels = array();
+    foreach (Channel::all() as $key => $value) {
+      if (Channel::hasPermission('view', $user, $value)) {
+        $channels[] = $value::where('channel_id', $value->channel_id)->get(Channel::$viewable)->first();
       }
     }
 
@@ -70,7 +69,7 @@ class ChannelController extends Controller
       if ($user == null) {
         $user = Auth::user();
       }
-      $messages = Message::where('channel_id', $channel->channel_id);
+      $messages = Message::where('channel_id', $channel->channel_id)->get();
 
       foreach ($messages as $key => $value) {
         $messages[$key] = $value::where('message_id', $value->message_id)->get(Message::$viewable)->first();

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\User;
 use App\Events\UserUpdate;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Intervention\Image\ImageManagerStatic as Image;
@@ -104,9 +105,44 @@ class UserController extends Controller
   {
       $data = $request->all();
       foreach ($data as $key => $value) {
-        if ($key == 'api_token' || $key == 'status' || $key == 'avatar') {
+        if (!in_array($key, $user->editable) && !($key == 'password_old' || $key == 'password_confirmation')) {
           unset($data[$key]);
         }
+      }
+
+      if (isset($data['password_old']) || isset($data['password']) || isset($data['password_confirmation'])) {
+        $request->validate([
+            'password_old' => [
+              'required',
+              function ($attribute, $value, $fail) use ($user) {
+                if (!Hash::check($value, $user->password)) {
+                  $fail('Your current password is invalid.');
+                }
+              },
+            ],
+            'password' => 'required|string|min:6|confirmed',
+         ]);
+
+         unset($data['password_old']);
+         unset($data['password_confirmation']);
+         $data['password'] = Hash::make($data['password']);
+      }
+
+      if (isset($data['options'])) {
+        $request->validate([
+            'options' => [
+              'required',
+              'json',
+              function ($attribute, $value, $fail) use ($user) {
+                foreach (json_decode($value, true) as $key => $val) {
+                  // Ensure the option is a valid user option
+                  if (!in_array($key, $user->options)) {
+                    $fail($key.' is not a valid option.');
+                  }
+                }
+              },
+            ],
+         ]);
       }
 
       if ($request->hasFile('avatar')) {
@@ -119,8 +155,6 @@ class UserController extends Controller
         $img->stream();
         Storage::put('public/avatars/'.$user->id.'.png', $img);
       }
-
-      //$user->createAvatar();
 
       $user->update($data);
 

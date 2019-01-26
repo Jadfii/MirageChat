@@ -38,9 +38,8 @@
               </div>
             </div>
             <div class="form-group chat-box-inner">
-              <textarea @keydown="startTyping" v-model="states.typing.message" v-focus="states.typing.focused" @focus="states.typing.focused = true" @blur="states.typing.focused = false" id="message" type="text" class="inline-scroll scroll-dark form-field form-control" name="message"></textarea>
-              <label class="text-label" for="message">Message</label>
-              <a @click="sendMessage" href="javascript:void(0)" id="chat-send" class="chat-send"><i class="material-icons">send</i></a>
+              <textarea @keydown="startTyping" v-model="states.typing.message" v-focus="states.typing.focused" @focus="states.typing.focused = true" @blur="states.typing.focused = false" placeholder="Message" id="message" type="text" class="inline-scroll scroll-dark form-field form-control" name="message"></textarea>
+              <a @click="sendMessage" id="chat-send" class="chat-send"><i class="material-icons">send</i></a>
             </div>
           </div>
           <div v-if="active_typing !== ''" class="chat-typing-wrapper">

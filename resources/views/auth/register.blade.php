@@ -14,12 +14,12 @@
 
             <div class="form-group">
               <input id="username" type="text" class="form-control form-field{{ $errors->has('name') ? ' is-invalid' : '' }}" name="username" value="{{ old('username') }}" required>
-              <label for="username">{{ __('Username') }}</label>
+              <label class="{{ old('username') ? 'active' : '' }}" for="username">{{ __('Username') }}</label>
             </div>
 
             <div class="form-group">
               <input id="email" type="email" class="form-control form-field{{ $errors->has('email') ? ' is-invalid' : '' }}" name="email" value="{{ old('email') }}" required>
-              <label for="email">{{ __('Email') }}</label>
+              <label class="{{ old('email') ? 'active' : '' }}" for="email">{{ __('Email') }}</label>
             </div>
 
             <div class="form-group">

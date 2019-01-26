@@ -45,7 +45,7 @@
     <link href="{{ asset('css/app.css') }}" rel="stylesheet">
 </head>
 <body>
-    <div class="app-container" id="app">
+    <div class="app-container" :class="{ 'dark-mode': user_options && user_options.dark_mode }" id="app">
         @if (Auth::guest() or !Auth()->user()->email_verified_at)
             <main>
                 @yield('content')
@@ -59,12 +59,16 @@
                 </div>
             </transition>
 
+            <audio id="message_sound">
+                <source src="{{ asset('sounds/light.mp3') }}"></source>
+            </audio>
+
             <form id="logout-form" action="{{ route('logout') }}" method="POST" style="display: none;">
                 @csrf
 
             </form>
 
-            <form-modal :title="'Create channel'" :message="''" :id="'channel-create-modal'" :func="createChannel">
+            <form-modal data-reset="true" :title="'Create channel'" :message="''" :id="'channel-create-modal'" :func="createChannel">
                 <template slot="body">
                   <div class="form-group form-group-alt">
                       <label for="channel_name">Channel Name</label>
@@ -85,7 +89,7 @@
             </form-modal>
 
             <form-modal :title="'Edit channel'" :message="''" :id="'channel-edit-modal'" :func="editChannel">
-                <template v-if="states.modal.item" slot="body">
+                <template v-if="states.modal.item && states.modal.item.name" slot="body">
                   <div class="form-group form-group-alt">
                       <label for="channel_name">Channel Name</label>
                       <input :value="states.modal.item.name" name="channel_name" type="text" class="form-control form-field" autocomplete="off" required>
@@ -119,6 +123,39 @@
                 </template>
             </form-modal>
 
+            <form-modal data-reset="true" :title="'Enable 2FA'" :message="''" :id="'enable-2fa-modal'" :func="confirm_2fa">
+                <template v-if="states.modal.item" slot="body">
+                    <div class="form-group form-group-alt qr-wrapper">
+                        <label>Scan QR Code</label>
+                        <img :src="states.modal.item.qr_img"></img>
+                        <p>Or enter this code into your authenticator app manually: @{{ states.modal.item.secret }}</p>
+                    </div>
+                    <div class="form-group form-group-alt">
+                        <label for="verify_code">Authenticator code</label>
+                        <input name="verify_code" type="text" class="form-control form-field" autocomplete="off" autofocus required>
+                        <div class="form-error"></div>
+                    </div>
+                </template>
+                <template slot="footer">
+                    <button type="submit" class="btn btn-primary btn-confirm">Confirm</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                </template>
+            </form-modal>
+
+            <form-modal data-reset="true" :title="'Remove 2FA'" :message="''" :id="'remove-2fa-modal'" :func="remove_2fa">
+                <template slot="body">
+                    <div class="form-group form-group-alt">
+                        <label for="verify_code">Authenticator code</label>
+                        <input name="verify_code" type="text" class="form-control form-field" autocomplete="off" autofocus required>
+                        <div class="form-error"></div>
+                    </div>
+                </template>
+                <template slot="footer">
+                    <button type="submit" class="btn btn-primary btn-confirm">Confirm</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                </template>
+            </form-modal>
+
             <v-popover
               v-if="states.popover.open"
               :style="tooltip_location"
@@ -142,10 +179,15 @@
                         <ul class="sidebar-nav settings-nav">
                             <div class="settings-nav-heading">
                               <h3>My Account</h3>
-                              <li v-on:click="states.settings.active_tab = 'account_details'" :class="{ active: states.settings.active_tab == 'account_details' }"><a>Account Details</a></li>
+                              <li data-setting="account_details" @click="changeSetting" :class="{ active: states.settings.active_tab == 'account_details' }"><a>Account Details</a></li>
                             </div>
                             <div class="settings-nav-heading">
-                              <li v-on:click="states.settings.active_tab = 'app_information'" :class="{ active: states.settings.active_tab == 'app_information' }"><a>App Information</a></li>
+                              <h3>App Settings</h3>
+                              <li data-setting="notifications" @click="changeSetting" :class="{ active: states.settings.active_tab == 'notifications' }"><a>Notifications</a></li>
+                              <li data-setting="appearance" @click="changeSetting" :class="{ active: states.settings.active_tab == 'appearance' }"><a>Appearance</a></li>
+                            </div>
+                            <div class="settings-nav-heading">
+                              <li data-setting="app_information" @click="changeSetting" :class="{ active: states.settings.active_tab == 'app_information' }"><a>App Information</a></li>
                             </div>
                             <div class="settings-nav-heading">
                               <li onclick="event.preventDefault();document.getElementById('logout-form').submit();"><a class="bad">Sign Out</a></li>
@@ -155,7 +197,7 @@
                   <div class="settings-content-wrapper cards-scroll inline-scroll scroll-light">
                     <div class="settings-content">
                         <div>
-                            <div class="settings-body" :ref="'account_details'" v-show="isActiveTab('account_details')">
+                            <div v-show="isActiveTab('account_details')" class="settings-body">
                                 <div class="heading-body">
                                   <h4 class="heading-title">Account Details</h4>
                                   <settings-frame>
@@ -189,35 +231,35 @@
                                                   <div class="info-wrapper">
                                                       <div class="form-group">
                                                           <input name="username" :value="current_user.username" type="text" class="form-control form-field">
-                                                          <label :class="{ active: current_user.username }">{{ __('Username') }}</label>
+                                                          <label for="username" :class="{ active: current_user.username }">{{ __('Username') }}</label>
                                                           <div class="form-error"></div>
                                                       </div>
 
                                                       <div class="form-group">
                                                           <input name="email" :value="current_user.email" type="text" class="form-control form-field">
-                                                          <label :class="{ active: current_user.email }">{{ __('Email') }}</label>
+                                                          <label for="email" :class="{ active: current_user.email }">{{ __('Email') }}</label>
                                                           <div class="form-error"></div>
                                                       </div>
 
                                                       <h6 class="heading-subtitle">{{ __('Change password') }}</h6>
 
                                                       <div class="form-group">
-                                                        <input id="password" type="password" class="form-control form-field" name="password" value="">
-                                                        <label for="password">{{ __('Current password') }}</label>
+                                                        <input id="password_old" type="password" class="form-control form-field" name="password_old" value="">
+                                                        <label for="password_old">{{ __('Current password') }}</label>
                                                       </div>
 
                                                       <div class="form-row">
                                                         <div class="col">
                                                           <div class="form-group">
-                                                            <input id="password_new" type="password" class="form-control form-field" name="password_new" value="">
-                                                            <label for="password_new">{{ __('New password') }}</label>
+                                                            <input id="password" type="password" class="form-control form-field" name="password" value="">
+                                                            <label for="password">{{ __('New password') }}</label>
                                                           </div>
                                                         </div>
 
                                                         <div class="col">
                                                           <div class="form-group">
-                                                            <input id="password_new_confirm" type="password" class="form-control form-field" name="password_new_confirm" value="">
-                                                            <label for="password_new_confirm">{{ __('Confirm new password') }}</label>
+                                                            <input id="password_confirmation" type="password" class="form-control form-field" name="password_confirmation" value="">
+                                                            <label for="password_confirmation">{{ __('Confirm new password') }}</label>
                                                           </div>
                                                         </div>
                                                       </div>
@@ -238,12 +280,50 @@
                                         </div>
                                       </div>
                                   </settings-frame>
+                                  <h4 class="heading-title">2 Factor Authentication</h4>
+                                  <settings-frame>
+                                      <div class="form-group no-margin form-submit">
+                                        <button v-if="!current_user.google2fa_secret" @click="enable_2fa" data-toggle="modal" data-target="#enable-2fa-modal" class="btn btn-primary">{{ __('Enable 2FA') }}</button>
+                                        <button v-else data-toggle="modal" data-target="#remove-2fa-modal" class="btn btn-primary btn-delete">{{ __('Remove 2FA') }}</button>
+                                      </div>
+                                  </settings-frame>
                                 </div>
                             </div>
-                            <div class="settings-body" :ref="'app_information'" v-show="isActiveTab('app_information')">
+                            <div v-show="isActiveTab('appearance')" class="settings-body">
+                                <div class="heading-body">
+                                  <h4 class="heading-title">Appearance</h4>
+                                  <settings-frame>
+                                      <div class="heading-desc">
+                                          <h6 class="heading-subtitle">Dark mode</h6>
+                                          <p class="heading-text">Enable dark mode. Easy on the eyes.</p>
+                                      </div>
+                                      <settings-toggle :name="'dark_mode'" :user_options="user_options" :func="changeOption"></settings-toggle>
+                                  </settings-frame>
+                                </div>
+                            </div>
+                            <div v-show="isActiveTab('notifications')" class="settings-body">
+                                <div class="heading-body">
+                                  <h4 class="heading-title">Notifications</h4>
+                                  <settings-frame>
+                                      <div class="heading-desc">
+                                          <h6 class="heading-subtitle">Desktop Notifications</h6>
+                                          <p class="heading-text">Turn on desktop notifications to be alerted when a new message is recieved.</p>
+                                      </div>
+                                      <settings-toggle :name="'desktop_notifications'" :user_options="user_options" :func="changeOption"></settings-toggle>
+                                  </settings-frame>
+                                  <settings-frame>
+                                      <div class="heading-desc">
+                                          <h6 class="heading-subtitle">Message Sounds</h6>
+                                          <p class="heading-text">Recieve an alert sound when on new messages.</p>
+                                      </div>
+                                      <settings-toggle :name="'message_sounds'" :user_options="user_options" :func="changeOption"></settings-toggle>
+                                  </settings-frame>
+                                </div>
+                            </div>
+                            <div v-show="isActiveTab('app_information')" class="settings-body">
                                 <div class="heading-body">
                                   <h4 class="heading-title">App Information</h4>
-                                  <settings-frame>
+                                  <settings-frame class="flex-column">
                                       <p><b>Version: </b>{{ Version::version() }}</p>
                                       <p><b>Build: </b>{{ Version::build() }}</p>
                                   </settings-frame>
@@ -282,7 +362,7 @@
                                   </div>
                             </div>
                             <ul class="sidebar-nav" id="channels">
-                              <h3>Channels</h3>
+                              <h3>Channels - @{{ channels.length }}</h3>
                               <li v-for="(channel, key, index) in channels" v-bind:data-channel_id="channel.channel_id" v-bind:class="{ active: channel.channel_id == states.current_channel }">
                                 <a v-on:click="states.current_channel = channel.channel_id">
                                     <i class="material-icons">people</i>
@@ -306,7 +386,7 @@
                       <div v-show="states.userlist" class="sidebar sidebar-wrapper sidebar-toggle sidebar-left inline-scroll scroll-dark">
                         <ul class="sidebar-nav" id="users">
                             <a @click="states.userlist = false" class="close icon"><i class="material-icons">close</i></a>
-                              <h3 v-if="usersStatus.online.length">Online</h3>
+                              <h3 v-if="usersStatus.online.length">Online - @{{ usersStatus.online.length }}</h3>
                               <li v-for="(user, index) in usersStatus.online" :class="{ bottom: isLast(index, usersStatus.online) }">
                                 <a data-toggle="popover" data-placement="left" :data-user_id="user.id">
                                     <div class="channel-icon">
@@ -315,7 +395,7 @@
                                     @{{ user.username }}
                                 </a>
                               </li>
-                              <h3 v-if="usersStatus.offline.length">Offline</h3>
+                              <h3 v-if="usersStatus.offline.length">Offline - @{{ usersStatus.offline.length }}</h3>
                               <li v-for="(user, index) in usersStatus.offline" :class="{ bottom: isLast(index, usersStatus.offline) }">
                                 <a data-toggle="popover" data-placement="left" :data-user_id="user.id">
                                     <div class="channel-icon">

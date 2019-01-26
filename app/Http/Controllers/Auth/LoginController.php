@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\User;
 use App\Http\Controllers\Controller;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
 use Illuminate\Http\Request;
@@ -51,5 +52,26 @@ class LoginController extends Controller
         return $this->guard()->attempt(
             $this->credentials($request), true // Always remember users
         );
+    }
+
+    /**
+     * Send the post-authentication response.
+     * (overriding default function)
+     *
+     * @param  \Illuminate\Http\Request $request
+     * @param  \Illuminate\Contracts\Auth\Authenticatable $user
+     * @return \Illuminate\Http\Response
+     */
+    private function authenticated(Request $request, User $user)
+    {
+        if ($user->google2fa_secret) {
+            Auth::logout();
+
+            $request->session()->put('2fa:user:id', $user->id);
+
+            return redirect('/login/auth');
+        }
+
+        return redirect()->intended($this->redirectTo);
     }
 }

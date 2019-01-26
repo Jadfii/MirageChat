@@ -36,8 +36,94 @@ $bad-colour: #ea2e49;
     --sidebar-left-width: 300px;
     --a-colour: #a3b4cc;
     --a-hover-colour: #e5eaf1;
+    --subhead-colour: #868a9d;
     --good-colour: #22b66e;
     --bad-colour: #ea2e49;
+
+    --main-bg-colour-dark: #17212c;
+    --dark-bg-colour: #0D1620;
+    --main-header-colour-dark: #172033;
+    --outline-colour-dark: #1E2B3A;
+}
+
+/* DARK MODE STUFF */
+.app-container.dark-mode, .app-container.dark-mode p {
+  color: var(--a-colour);
+}
+
+.app-container.dark-mode h1,
+.app-container.dark-mode h2,
+.app-container.dark-mode h3,
+.app-container.dark-mode h4,
+.app-container.dark-mode h5,
+.app-container.dark-mode h6,
+.app-container.dark-mode .chat-message,
+.app-container.dark-mode #message
+ {
+  color: #fff;
+}
+
+.app-container.dark-mode h3 {
+  color: var(--subhead-colour);
+}
+
+.app-container.dark-mode .content,
+.app-container.dark-mode .chat-box-wrapper,
+.app-container.dark-mode .navbar,
+.app-container.dark-mode .form-control,
+.app-container.dark-mode .settings-wrapper,
+{
+  background-color: var(--main-bg-colour-dark);
+}
+
+.app-container.dark-mode .icon:hover {
+  background-color: var(--main-header-colour-dark);
+}
+
+.app-container.dark-mode .inline-scroll::-webkit-scrollbar-track-piece,
+.app-container.dark-mode .inline-scroll::-webkit-scrollbar-thumb
+{
+  border-color: var(--main-bg-colour-dark) !important;
+}
+
+.app-container.dark-mode .inline-scroll::-webkit-scrollbar-thumb {
+  background-color: var(--dark-bg-colour) !important;
+}
+
+.app-container.dark-mode .inline-scroll::-webkit-scrollbar-track {
+  background-color: var(--main-bg-colour);
+}
+
+.app-container.dark-mode .navbar,
+.app-container.dark-mode .chat-message,
+.app-container.dark-mode .form-control,
+.app-container.dark-mode .form-control:focus,
+.app-container.dark-mode .chat-box,
+.app-container.dark-mode .chat-box-inner,
+{
+  border-color: var(--outline-colour-dark);
+}
+
+.app-container.dark-mode h5, .app-container.dark-mode .nav-link {
+  color: #fff;
+}
+
+.app-container.dark-mode ~ .v-tooltip.popover .popover-inner {
+  background: var(--main-bg-colour);
+}
+
+.app-container.dark-mode ~ .v-tooltip.popover .popover-inner h5 {
+  color: #fff;
+}
+
+.app-container.dark-mode ~ .v-tooltip.popover .popover-arrow,
+.app-container.dark-mode ~ .v-tooltip.popover .popover-inner .status-badge
+{
+  border-color: var(--main-bg-colour);
+}
+
+body > div:not(.app-container) {
+  z-index: 99999;
 }
 
 .dg-container {
@@ -122,6 +208,21 @@ $bad-colour: #ea2e49;
   height: .6em;
 }
 
+/* TOOLTIP CSS */
+.v-tooltip.popover .popover-inner {
+  background: #fff;
+}
+
+/* SENTRY CSS */
+.sentry-error-embed .form-submit {
+  display: flex;
+  align-items: center;
+}
+
+.sentry-error-embed .form-submit .btn {
+  height: auto;
+}
+
 /* MAIN CSS */
 
 html, body {
@@ -140,7 +241,7 @@ h1 {
 }
 
 h3 {
-  color: #868a9d;
+  color: var(--subhead-colour);
   font-weight: normal;
   font-size: 16px;
 }
@@ -319,14 +420,16 @@ h6 span {
   position: relative;
 }
 
-.mb-20, .sidebar-nav li.bottom, .sidebar-nav h3 {
+.mb-20, .sidebar-nav li.bottom {
   margin-bottom: 20px;
 }
 
 .sidebar-nav h3 {
   text-transform: uppercase;
   font-size: 12px;
-  letter-spacing: 2px;
+  letter-spacing: 1px;
+  font-weight: bold;
+  margin-bottom: 7px;
 }
 
 .sidebar-nav li a {
@@ -344,7 +447,10 @@ h6 span {
   height: 42px;
   display: flex;
   align-items: center;
-  text-indent: 30px;
+}
+
+.sidebar-nav li a .channel-icon {
+  margin-right: 15px;
 }
 
 .sidebar-nav li .channel-actions {
@@ -519,7 +625,7 @@ h6 span {
   color: var(--a-colour);
 }
 
-.sidebar-nav h3, .sidebar-nav li i, .sidebar-nav li a {
+.sidebar-nav h3, .sidebar-nav li i {
   text-indent: 30px;
 }
 
@@ -752,7 +858,7 @@ form, .form-wrapper {
   left: 12px;
   top: 15px;
   font-size: 16px;
-  color: #868a9d;
+  color: var(--subhead-colour);
 }
 
 .form-group-alt {
@@ -777,6 +883,10 @@ form, .form-wrapper {
   overflow: hidden;
 }
 
+.form-group-alt p {
+  color: #fff;
+}
+
 .form-group-alt label, .form-group-alt label.active {
   position: relative;
   left: 0;
@@ -787,6 +897,15 @@ form, .form-wrapper {
   text-transform: uppercase;
   font-weight: bold;
   color: inherit !important;
+}
+
+.qr-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.qr-wrapper {
+  width: 50%;
 }
 
 input:focus~label, textarea:focus~label, label.active {
@@ -1315,6 +1434,7 @@ button[type="submit"] {
   width: 100%;
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
 }
 
 .chat-message {
@@ -1362,6 +1482,7 @@ button[type="submit"] {
 
 .chat-text {
   position: relative;
+  width: 100%;
 }
 
 .chat-user {
@@ -1412,6 +1533,16 @@ img.chat-markup {
 
 .chat-box-inner {
   border: 2px solid var(--outline-colour);
+  display: flex;
+  align-items: center;
+}
+
+#message {
+  min-height: 0;
+  height: 40px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  border: none;
 }
 
 .autocomplete-container {
@@ -1471,7 +1602,7 @@ img.chat-markup {
 }
 
 .chat-timestamp {
-  margin-left: 10px;
+  margin-left: 5px;
   color: var(--a-colour);
   font-size: 12px;
 }
@@ -1481,9 +1612,8 @@ img.chat-markup {
 }
 
 .chat-send {
-  position: absolute;
-  top: 15px;
-  right: 12px;
+  margin-right: 12px;
+  max-height: 24px;
 }
 
 .chat-typing {
@@ -1579,7 +1709,7 @@ img.chat-markup {
 }
 
 .settings-wrapper {
-  z-index: 9999;
+  z-index: 999;
   height: 100%;
   width: 100%;
   position: fixed;
@@ -1701,7 +1831,8 @@ img.chat-markup {
 
 .heading-section {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: center;
   margin-bottom: 30px;
 }
 
