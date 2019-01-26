@@ -124,6 +124,7 @@ const App = new Vue({
     focus: focus
   },
   data: {
+     env: process.env.NODE_ENV,
      current_user: initialState.current_user,
      users: initialState.users,
      online_users: [],
