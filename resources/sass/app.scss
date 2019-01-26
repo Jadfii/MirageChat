@@ -401,14 +401,16 @@ h6 span {
   position: relative;
 }
 
-.mb-20, .sidebar-nav li.bottom, .sidebar-nav h3 {
+.mb-20, .sidebar-nav li.bottom {
   margin-bottom: 20px;
 }
 
 .sidebar-nav h3 {
   text-transform: uppercase;
   font-size: 12px;
-  letter-spacing: 2px;
+  letter-spacing: 1px;
+  font-weight: bold;
+  margin-bottom: 7px;
 }
 
 .sidebar-nav li a {
