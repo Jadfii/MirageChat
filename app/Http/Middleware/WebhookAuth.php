@@ -18,7 +18,9 @@ class WebhookAuth
       $app_key = $request->header('X_PUSHER_KEY');
       $signature = $request->header('X_PUSHER_SIGNATURE');
 
-      $expected = hash_hmac('sha256', file_get_contents('php://input'), env('PUSHER_APP_SECRET'), false);
+      $app_secret = config('broadcasting.connections.pusher.secret');
+
+      $expected = hash_hmac('sha256', file_get_contents('php://input'), $app_secret, false);
 
       if ($signature !== $expected) {
         abort(401, "Not authenticated: ".$app_key." | ".$signature);
