@@ -22,6 +22,7 @@ window.Push = require('push.js');
  */
 Sentry.init({
   dsn: 'https://3197435afdfa48688b81d083c5004db0@sentry.io/1376197',
+  environment: process.env.NODE_ENV,
   beforeSend(event) {
     Sentry.configureScope((scope) => {
       scope.setUser({
