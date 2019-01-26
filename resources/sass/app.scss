@@ -108,6 +108,20 @@ $bad-colour: #ea2e49;
   color: #fff;
 }
 
+.app-container.dark-mode ~ .v-tooltip.popover .popover-inner {
+  background: var(--main-bg-colour);
+}
+
+.app-container.dark-mode ~ .v-tooltip.popover .popover-inner h5 {
+  color: #fff;
+}
+
+.app-container.dark-mode ~ .v-tooltip.popover .popover-arrow,
+.app-container.dark-mode ~ .v-tooltip.popover .popover-inner .status-badge
+{
+  border-color: var(--main-bg-colour);
+}
+
 body > div:not(.app-container) {
   z-index: 99999;
 }
@@ -192,6 +206,11 @@ body > div:not(.app-container) {
   background-color: #fff;
   width: .6em;
   height: .6em;
+}
+
+/* TOOLTIP CSS */
+.v-tooltip.popover .popover-inner {
+  background: #fff;
 }
 
 /* SENTRY CSS */
