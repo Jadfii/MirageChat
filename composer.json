@@ -17,10 +17,12 @@
         "laravel/framework": "5.7.*",
         "laravel/tinker": "^1.0",
         "paragonie/sodium_compat": "^1.7",
+        "php-http/curl-client": "^1.7",
         "pragmarx/google2fa-laravel": "^0.2.0",
         "pragmarx/version": "^0.2.8",
         "predis/predis": "^1.1",
-        "pusher/pusher-php-server": "~3.0"
+        "pusher/pusher-php-server": "~3.0",
+        "sentry/sentry-laravel": "1.0.0-beta3"
     },
     "require-dev": {
         "beyondcode/laravel-dump-server": "^1.0",
