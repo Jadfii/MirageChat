@@ -23,12 +23,19 @@ window.Push = require('push.js');
 Sentry.init({
   dsn: 'https://3197435afdfa48688b81d083c5004db0@sentry.io/1376197',
   beforeSend(event) {
+    Sentry.configureScope((scope) => {
+      scope.setUser({
+        'id': App.current_user.id,
+        'username': App.current_user.username,
+        'email': App.current_user.email,
+      });
+    });
     // Check if it is an exception, if so, show the report dialog
     if (event.exception) {
       Sentry.showReportDialog({
         'title': "You've encountered an error.",
-        'subtitle': "If you'd like to help, tell us what happened below.",
-        'subtitle2': "If the error was not obvious, feel free to leave this form.",
+        'subtitle': "If you'd like to help, tell us what happened below. If the error was not obvious, feel free to leave this form.",
+        'subtitle2': "Error message: " + event.exception.values[0].type + ": " + event.exception.values[0].value,
         'user': {
           'email': (App.current_user) ? App.current_user.email : "",
           'name': (App.current_user) ? App.current_user.username : "",
