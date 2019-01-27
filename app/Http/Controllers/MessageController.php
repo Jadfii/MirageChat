@@ -36,14 +36,17 @@ class MessageController extends Controller
       if ($user == null) {
         $user = Auth::user();
       }
-      $messages = Message::all();
 
-      foreach ($messages as $key => $value) {
-        $messages[$key] = $value::where('message_id', $value->message_id)->get(Message::$viewable)->first();
-        $messages[$key]['read'] = $value->isRead($user, $value);
-        if (!Message::hasPermission('view', $user, $value)) {
-          unset($messages[$key]);
+      $channels = Channel::all();
+      foreach ($channels as $key => $value) {
+        if (!Channel::hasPermission('view', $user, $value)) {
+          unset($channels[$key]);
         }
+      }
+
+      $messages = array();
+      foreach (Message::whereIn('channel_id', $channels->pluck('channel_id'))->get() as $key => $value) {
+        $messages[] = array_merge($value->only(Message::$viewable), ['read' => $value->isRead($user, $value)]);
       }
 
       return json_decode(json_encode($messages), true);
@@ -60,17 +63,20 @@ class MessageController extends Controller
       if ($user == null) {
         $user = Auth::user();
       }
-      $messages = Message::all();
 
-      foreach ($messages as $key => $value) {
-        $messages[$key] = $value::where('message_id', $value->message_id)->get(Message::$viewable)->first();
-        $messages[$key]['read'] = $value->isRead($user, $value);
-        if (!Message::hasPermission('view', $user, $value)) {
-          unset($messages[$key]);
+      $channels = Channel::all();
+      foreach ($channels as $key => $value) {
+        if (!Channel::hasPermission('view', $user, $value)) {
+          unset($channels[$key]);
         }
       }
 
-      return $messages;
+      $messages = array();
+      foreach (Message::whereIn('channel_id', $channels->pluck('channel_id'))->get() as $key => $value) {
+        $messages[] = array_merge($value->only(Message::$viewable), ['read' => $value->isRead($user, $value)]);
+      }
+
+      return json_decode(json_encode($messages), true);
   }
 
   /**

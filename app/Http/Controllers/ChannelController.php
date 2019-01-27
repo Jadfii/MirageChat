@@ -37,9 +37,9 @@ class ChannelController extends Controller
     }
 
     $channels = array();
-    foreach (Channel::all() as $key => $value) {
+    foreach (Channel::all(Channel::$viewable) as $key => $value) {
       if (Channel::hasPermission('view', $user, $value)) {
-        $channels[] = $value::where('channel_id', $value->channel_id)->get(Channel::$viewable)->first();
+        $channels[] = $value;
       }
     }
 
