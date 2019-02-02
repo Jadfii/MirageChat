@@ -65,7 +65,7 @@ class Message extends Model
   {
       switch ($permission) {
         case 'view': {
-          return Channel::hasPermission($permission, $user, Channel::where('channel_id', $message->channel_id)->first());
+          return Channel::hasPermission($permission, $user, $message->channel);
         }
         case 'edit': {
           return $user->id == $message->user_id;
