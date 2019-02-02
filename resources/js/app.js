@@ -16,6 +16,8 @@ window.autosize = require('autosize');
 window.isOnline = require('is-online');
 window.away = require('away');
 window.Push = require('push.js');
+import AtComponents from 'at-ui';
+import 'at-ui-style';
 
 /**
  * Initialise Sentry
@@ -106,6 +108,9 @@ Vue.use(VuejsDialog, {
 
 // Use v-tooltip
 Vue.use(VTooltip);
+
+// Use AT-UI
+Vue.use(AtComponents);
 
 // Pass initial state data into a global variable inside app.js file
 var initialState = window.__INITIAL_STATE__;

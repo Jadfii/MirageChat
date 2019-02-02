@@ -1,26 +1,19 @@
 @extends('layouts.app')
-
 @section('content')
-<section class="h-100">
-  <div class="container h-100">
-    <div class="row justify-content-center h-100">
-      <div class="page-title">
-        <h1 class="card-title">{{ __('Login') }}</h1>
-        <h3 class="card-title">{{ __('Sign in by entering your information below') }}</h3>
-      </div>
-      <div class="form-wrapper">
+<div class="container-fluid h-100">
+  <div class="row justify-content-center h-100 w-100">
+    <div class="col col-md-12">
+      <div class="w-100 px-8">
+        <div class="page-title">
+          <h1 class="card-title">{{ __('Login') }}</h1>
+          <h3 class="card-title">{{ __('Sign in by entering your information below') }}</h3>
+        </div>
         <form method="POST" id="login-form" action="{{ route('login') }}">
           @csrf
 
-          <div class="form-group">
-            <input id="email" type="email" class="form-control form-field{{ $errors->all() ? ' is-invalid' : '' }}" name="email" required autofocus>
-            <label for="email">{{ __('Email') }}</label>
-          </div>
+          <at-input name="email" type="email" placeholder="Email" class="{{ $errors->all() ? ' is-invalid' : '' }}" required autofocus></at-input>
 
-          <div class="form-group">
-            <input id="password" type="password" class="form-control form-field{{ $errors->all() ? ' is-invalid' : '' }}" name="password" required>
-            <label for="password">{{ __('Password') }}</label>
-          </div>
+          <at-input name="password" type="password" placeholder="Password" class="{{ $errors->all() ? ' is-invalid' : '' }}" required></at-input>
 
           <div class="form-group form-options">
             <p class="status-message bad">{{ $errors->first() }}</p>
@@ -34,6 +27,9 @@
         </form>
       </div>
     </div>
+    <div class="col col-md-12">
+      Login
+    </div>
   </div>
-</section>
+</div>
 @endsection
