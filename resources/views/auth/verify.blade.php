@@ -1,22 +1,13 @@
 @extends('layouts.app')
-
 @section('content')
-<section class="h-100">
-  <div class="container h-100">
-    <div class="row justify-content-center h-100">
-      <div class="page-title">
-        <h1 class="card-title">{{ __('Verify Your Email Address') }}</h1>
-      </div>
-      <div class="page-text">
-        @if (session('resent'))
-          <div class="margin-top20 alert alert-success status-alert fade show" role="alert">
-             <span class="status-message">{{ __('A fresh verification link has been sent to your email address.') }}</span>
-          </div>
-        @endif
-        {{ __('Before proceeding, please check your email for a verification link.') }}
-        {{ __('If you did not receive the email') }}, <a href="{{ route('verification.resend') }}">{{ __('click here to request another') }}</a>.
-      </div>
-    </div>
-  </div>
-</section>
+<div class="my-2">
+  <at-alert message="{{ session('resent') ? '' : 'A fresh verification link has been sent to your email address.' }}" class="{{ session('resent') ? '' : 'd-none' }}" type="error"></at-alert>
+  <h1 class="my-2">Verify Your Email Address</h1>
+  <h4 class="my-1">Before proceeding, please check your email for a verification link.</h4>
+  <h4 class="my-1">If you did not receive the email, <a href="{{ route('verification.resend') }}">click here to request another</a></h4>
+</div>
+@endsection
+
+@section('illustration')
+<img height="250px" src="{{ asset('icons/verify_email.svg') }}">
 @endsection

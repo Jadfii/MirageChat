@@ -29,6 +29,7 @@
         "at-ui-style": "^1.5.1",
         "autosize": "^4.0.2",
         "away": "^1.0.0",
+        "feather-icons": "^4.19.0",
         "is-image-url": "^1.1.8",
         "is-online": "^7.0.0",
         "laravel-echo": "^1.5.2",

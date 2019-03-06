@@ -17,7 +17,6 @@ window.isOnline = require('is-online');
 window.away = require('away');
 window.Push = require('push.js');
 import AtComponents from 'at-ui';
-import 'at-ui-style';
 
 /**
  * Initialise Sentry
@@ -59,12 +58,16 @@ Vue.component('avatar', require('./components/Avatar.vue').default);
 Vue.component('user-frame', require('./components/UserFrame.vue').default);
 Vue.component('settings-frame', require('./components/SettingsFrame.vue').default);
 Vue.component('settings-toggle', require('./components/SettingsToggle.vue').default);
-Vue.component('message-frame', require('./components/MessageFrame.vue').default);
+Vue.component('message', require('./components/Message.vue').default);
 
 /**
  * Declare Vue filters
  */
- // Filter to capitalise strings
+// Filter to get object properties
+import get from 'lodash';
+Vue.filter("get", (obj, path) => get(obj, path));
+
+// Filter to capitalise strings
 Vue.filter("capitalise", function(value) {
   if (!value) {
     return "";
@@ -155,6 +158,7 @@ const App = new Vue({
           item: null,
           title: '',
           message: '',
+          content: '',
         },
         popover: {
           open: false,
@@ -179,9 +183,15 @@ const App = new Vue({
           }
         },
      },
+     modals: {
+       create_channel: null,
+       edit_message: null,
+       edit_channel: null,
+     },
      window: {
        width: window.innerWidth,
        height: window.innerHeight,
+       nav_height: window.innerHeight * 0.06,
      },
   },
   created: function() {
@@ -229,8 +239,6 @@ const App = new Vue({
         }
       }
     });
-
-    this.scrollBottomMessages();
   },
   watch: {
     messages: function() {
@@ -258,19 +266,13 @@ const App = new Vue({
     'states.current_channel': function() {
       var App_this = this;
       // Scroll to bottom of message container on channel change
-      Vue.nextTick(function() {
-        $('#messages').scrollTop(1E10);
-        App_this.states.typing.message = '';
-      });
+      this.scrollBottomMessages();
       if (this.unread[this.states.current_channel] > 0) {
         this.readChannel(this.states.current_channel);
       }
     },
     'states.typing.focused': function() {
       var App_this = this;
-    },
-    'states.modal.item': function() {
-      autosize($('textarea'));
     },
     'window.width': function() {
       if (this.window.width <= 768) {
@@ -312,6 +314,11 @@ const App = new Vue({
     // Computed to sort users by username
     users_sorted: function() {
       return _.sortBy(this.users, ['username']);
+    },
+    // Computed to get all users but current user
+    other_users: function() {
+      var App_this = this;
+      return _.reject(this.users, function(user) { return user.id == App_this.current_user.id; });
     },
     // Computed data to seperate users by their status
     usersStatus: function() {
@@ -402,15 +409,34 @@ const App = new Vue({
     }
   },
   methods: {
+    // Get object property
+    get: function(obj, path) {
+      if (!obj) {
+        return false;
+      }
+      return _.get(obj, path);
+    },
+    // Check if object property exists
+    has: function(obj, path) {
+      if (!obj) {
+        return false;
+      }
+      return _.has(obj, path);
+    },
     // Scroll to bottom of messages container
     scrollBottomMessages: function() {
-      var scrollTimer = setInterval(function() {
-        $('#messages').scrollTop(1E10);
-      }, 100);
-
-      setTimeout(function() {
-        clearInterval(scrollTimer);
-      }, 1000);
+      var App_this = this;
+      Vue.nextTick(function() {
+        if (App_this.hasImage(App_this.states.current_channel)) {
+          var scroll_timer = setInterval(function() {
+            $('#messages').scrollTop(1E10);
+          }, 100);
+          setTimeout(function() {
+            clearInterval(scroll_timer);
+          }, 300);
+        }
+        App_this.states.typing.message = '';
+      });
     },
     // Method to toggle popover state
     togglePopover: function(data) {
@@ -444,6 +470,10 @@ const App = new Vue({
     findMessages: function(channel_id) {
       return this.messages.filter(message => message.channel_id == channel_id);
     },
+    // Method to grab avatar for user
+    getAvatar: function(user_id) {
+      return '/storage/avatars/'+user_id+'.png';
+    },
     // Method to get members as array from channel
     getMembers: function(channel) {
       var App_this = this;
@@ -453,6 +483,15 @@ const App = new Vue({
         return _.sortBy(JSON.parse(channel.members).map(user => App_this.findUser(user)), ['username']);
       }
     },
+    // Method to get members usernames as array from channel
+    getMembersNames: function(channel) {
+      var App_this = this;
+      if (typeof channel == 'undefined') {
+        return [];
+      } else {
+        return _.sortBy(JSON.parse(channel.members).map(user => App_this.findUser(user).username), ['username']);
+      }
+    },
     // Method to determine if user is member of channel
     isMember: function(user_id, channel) {
       var App_this = this;
@@ -460,6 +499,16 @@ const App = new Vue({
         return false;
       }
       return typeof _.find(App_this.getMembers(channel), {'id': user_id}) !== 'undefined';
+    },
+    // Method to check if a channel has an image in it
+    hasImage: function(channel_id) {
+      var App_this = this;
+      var messages = this.findMessages(channel_id);
+      return this.messages.filter(function(message) {
+        return _.find(message.content.split(' '), function(val) {
+          return val.match(/\.(jpeg|jpg|gif|png)$/);
+        }) != null;
+      }).length > 0;
     },
     // Method to get number of unread messages in channel
     getUnread: function(channel_id) {
@@ -529,17 +578,14 @@ const App = new Vue({
       var App_this = this;
       if (!e.shiftKey && !this.states.typing.autocomplete) {
         e.preventDefault();
-        var content = $(e.target).closest(".chat-box").find("textarea");
+        var content = this.states.typing.message;
         var channel = this.states.current_channel;
 
-        if (typeof content.val() !== 'undefined' && content.val().trim() !== '') {
+        if (typeof content !== 'undefined' && content.trim() !== '') {
           axios.post('/api/channels/' + channel, {
-             content: content.val(),
+             content: content.trim(),
           })
           .then(function (response) {
-            autosize.update(content);
-            content.focus();
-
             App_this.states.typing.active = false;
             App_this.states.typing.message = '';
             App_this.states.typing.suggested_mentions = [];
@@ -559,16 +605,15 @@ const App = new Vue({
              if (!App_this.states.production) {
                console.log(error);
              }
-             App_this.$dialog.alert({
+             App_this.$Modal.alert({
                title: 'Your message is too long',
-               body: error.response.data.errors.content[0],
-             }, {
-               animation: 'none',
+               content: error.response.data.errors.content[0],
                okText: 'Okay',
+               styles: "{top: '50%', transform: 'translateY(-50%)'}",
+               callback: function(action) {
+                 //
+               }
              })
-             .then(function (dialog) {
-               //
-             });
           });
         }
       }
@@ -576,41 +621,41 @@ const App = new Vue({
     // Function to enable user to edit a message of theirs
     editMessage: function(e) {
       var App_this = this;
-      var message_id = parseInt($(e.target).closest(".chat-message").attr("data-message_id"));
-      if (this.states.modal.item && this.states.modal.item.hasOwnProperty("content") && this.states.modal.item.message_id == message_id) {
-        var modal = $('#message-edit-modal');
-        var content = modal.find("textarea").val().trim();
-
-        if (content !== this.states.modal.item.content) {
+      if (typeof e !== 'undefined') {
+        var message_id = parseInt($(e.target).closest("[data-message_id]").attr("data-message_id"));
+        this.states.modal.item = this.findMessage(message_id);
+        if (typeof this.states.modal.item !== 'undefined') {
+          this.states.modal.content = this.states.modal.item.content;
+          this.modals.edit_message = true;
+        }
+      } else {
+        if (this.states.modal.content.trim() !== this.states.modal.item.content) {
           axios.put('/api/messages/' + this.states.modal.item.message_id, {
-             content: content,
+             content: this.states.modal.content.trim(),
           })
            .then(function (response) {
              if (!App_this.states.production) {
                console.log(response);
              }
-             modal.modal('hide');
            })
            .catch(function (error) {
+             this.states.modal.content = '';
+             this.states.modal.item = null;
              if (!App_this.states.production) {
                console.log(error);
              }
           });
-        } else {
-          modal.modal('hide');
         }
-      } else {
-        this.states.modal.item = this.findMessage(message_id);
       }
     },
     // Function to delete a message
-    deleteMessage: function(e) {
+    deleteMessage: function(message_id) {
       var App_this = this;
-      var message_id = parseInt($(e.target).closest(".chat-message").attr("data-message_id"));
 
-      this.$dialog.confirm({
+      this.$Modal.confirm({
         title: 'Delete message',
-        body: 'Are you sure you want to delete the message "' + this.findMessage(message_id).content + '"?',
+        content: 'Are you sure you want to delete the message "' + this.findMessage(message_id).content + '"?',
+        styles: "{top: '50%', transform: 'translateY(-50%)'}",
       }, {
         loader: true,
         animation: 'none',
@@ -636,80 +681,81 @@ const App = new Vue({
     // Method to create a channel
     createChannel: function(e) {
       var App_this = this;
-      var formData = $(e.target).serializeArray();
-      var members = [];
-      Object.keys(formData.filter(data => data.name == 'members')).forEach(function (key) {
-        members.push(formData.filter(data => data.name == 'members')[key].value);
-      });
-
-      var modal = $('#channel-create-modal');
-
-      axios.post('/api/channels', {
-         name: _.find(formData, {'name': 'channel_name'}).value,
-         members: members,
-      })
-       .then(function (response) {
-         if (!App_this.states.production) {
-           console.log(response);
-         }
-         modal.modal('hide');
-         modal.find('form').trigger("reset");
-         App_this.states.current_channel = response.data.channel_id;
-       })
-       .catch(function (error) {
-         if (!App_this.states.production) {
-           console.log(error);
-         }
-      });
+      if (typeof e !== 'undefined') {
+        if (typeof this.states.modal.item !== 'undefined') {
+          this.states.modal.content = {
+            name: '',
+            members: [],
+          };
+          this.modals.create_channel = true;
+        }
+      } else {
+        axios.post('/api/channels', {
+          name: App_this.states.modal.content.name,
+          members: App_this.states.modal.content.members,
+        })
+         .then(function (response) {
+           if (!App_this.states.production) {
+             console.log(response);
+           }
+           App_this.states.current_channel = response.data.channel_id;
+         })
+         .catch(function (error) {
+           if (!App_this.states.production) {
+             console.log(error);
+           }
+        });
+      }
     },
     // Method to edit a channel
     editChannel: function(e) {
       var App_this = this;
-      var formData = $(e.target).serializeArray();
-      var members = [];
-      Object.keys(formData.filter(data => data.name == 'members')).forEach(function (key) {
-        members.push(formData.filter(data => data.name == 'members')[key].value);
-      });
-
-      var modal = $('#channel-edit-modal');
-
-      axios.put('/api/channels/' + this.states.modal.item.channel_id, {
-         name: _.find(formData, {'name': 'channel_name'}).value,
-         members: members,
-      })
-       .then(function (response) {
-         if (!App_this.states.production) {
-           console.log(response);
-         }
-         modal.modal('hide');
-       })
-       .catch(function (error) {
-         if (!App_this.states.production) {
-           console.log(error);
-         }
-      });
+      if (typeof e !== 'undefined') {
+        var members = this.getMembers(e);
+        this.states.modal.item = e;
+        if (typeof this.states.modal.item !== 'undefined') {
+          this.states.modal.content = {
+            name: this.states.modal.item.name,
+            members: _.without(JSON.parse(this.states.modal.item.members), App_this.current_user.id),
+          };
+          this.modals.edit_channel = true;
+        }
+      } else {
+        if (this.states.modal.content.name.trim() !== this.states.modal.item.name || !_.isEqual(App_this.states.modal.content.members.sort(), _.without(JSON.parse(this.states.modal.item.members), function(val) { return val !== App_this.current_user.id; }, App_this.current_user.id).sort())) {
+          axios.put('/api/channels/' + this.states.modal.item.channel_id, {
+             name: App_this.states.modal.content.name,
+             members: App_this.states.modal.content.members,
+          })
+           .then(function (response) {
+             if (!App_this.states.production) {
+               console.log(response);
+             }
+           })
+           .catch(function (error) {
+             if (!App_this.states.production) {
+               console.log(error);
+             }
+          });
+        }
+      }
     },
     // Method to delete channel
     deleteChannel: function(e) {
       var App_this = this;
-      var modal = $('#channel-edit-modal');
 
-      modal.modal('hide');
+      this.modals.edit_channel = false;
 
-      this.$dialog.confirm({
+      this.$Modal.confirm({
         title: 'Delete channel',
-        body: 'Are you sure you want to delete the channel "' + App_this.states.modal.item.name + '"?',
-      }, {
-        loader: true,
-        animation: 'fade',
+        content: 'Are you sure you want to delete the channel "' + App_this.states.modal.item.name + '"?',
+        styles: "{top: '50%', transform: 'translateY(-50%)'}",
       })
-      .then(function (dialog) {
+      .then(function() {
         axios.delete('/api/channels/' + App_this.states.modal.item.channel_id)
          .then(function (response) {
            if (!App_this.states.production) {
              console.log(response);
            }
-           dialog.close();
            _.remove(App_this.messages, function(obj) {
              obj.channel_id == App_this.states.modal.item.channel_id;
            })
@@ -769,17 +815,18 @@ const App = new Vue({
            if (!App_this.states.production) {
              console.log(error);
            }
-           App_this.$dialog.alert({
+           App_this.$Modal.alert({
              title: error.response.data.message,
-             body: Object.values(error.response.data.errors)[0][0],
-           }, {
-             animation: 'none',
+             content: Object.values(error.response.data.errors)[0][0],
              okText: 'Okay',
+             styles: "{top: '50%', transform: 'translateY(-50%)'}",
+             callback: function(action) {
+               //
+             }
            })
-           .then(function (dialog) {
-             //
-           });
         });
+      } else {
+        App_this.states.settings.account_edit = false;
       }
     },
     // Handle avatar change on account edit page
@@ -1049,7 +1096,7 @@ const App = new Vue({
 });
 
 // Automatically resize text areas to fit text height
-autosize($('textarea'));
+//autosize($('textarea'));
 
 // Detect if browser is offline
 isOnline().then(online => {
@@ -1107,6 +1154,14 @@ function listenToChannel(channel_id) {
             }
           }
           App.messages.push(e.message);
+          if (App.current_user.id !== e.message.user_id) {
+            App.$Notify({
+              title: App.findUser(e.message.user_id).username + ' (Channel: ' + App.findChannel(e.message.channel_id).name + ')',
+              message: e.message.content,
+              duration: 6000,
+              showClose: false
+            });
+          }
           // Play sound if user has message_sounds set to true
           if (App.user_options.message_sounds && App.current_user.id !== e.message.user_id) {
             document.getElementById('message_sound').play();
@@ -1227,13 +1282,13 @@ if (App.logged_in && document.getElementById('messages')) {
           console.log(e.user);
         }
         Vue.set(App.users, App.users.findIndex((user_find => user_find.id == e.user.id)), e.user);
-        var src = $(".avatar[data-user_id='" + e.user.id + "']").attr('src');
+        var src = $("[data-user_id='" + e.user.id + "']").attr('src');
         if (src && src.indexOf('?') > 0) {
           src = src.substring(0, src.indexOf('?')) + '?' + Date.now();
         } else {
           src = src + '?' + Date.now();
         }
-        $(".avatar[data-user_id='" + e.user.id + "']").attr('src', src);
+        $("[data-user_id='" + e.user.id + "']").attr('src', src);
         if (e.user.id == App.current_user.id) {
           App.current_user.status = e.user.status;
           App.current_user.username = e.user.username;
@@ -1298,10 +1353,14 @@ window.addEventListener('keydown', function(e) {
   if (e.keyCode === 27) {
     App.states.settings.display = false;
   }
+  // If message textarea is focused
+  if (App.states.typing.focused) {
+    App.startTyping(e);
+  }
 });
 
 // Initialise Bootstrap tooltips
-$("body").tooltip({
+$(document.body).tooltip({
     selector: '[data-toggle="tooltip"]'
 });
 

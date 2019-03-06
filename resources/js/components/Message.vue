@@ -1,29 +1,32 @@
 <template>
-  <div v-bind:class="{ from: message.user_id == current_user.id, bottom: bottom, unread: !message.read, 'message-close': close, 'message-close-before': close_before }" class="chat-message" v-bind:data-message_id="message.message_id">
-    <!--<user-frame v-bind:user="message.user" v-bind:text="true" v-bind:message="message"></user-frame>-->
-    <div v-if="!close" v-bind:data-user_id="message.user_id" class="user">
-      <avatar :src="'/storage/avatars/'+user.id+'.png'" :popover="true" :user="user"></avatar>
+  <div :class="{
+    'border-bottom': !bottom && !close_before,
+    'pb-0 pt-3 px-3': close_before && !close,
+    'pb-1': close_before,
+    'pb-3': close && !close_before,
+    'p-3': !close && !close_before,
+    'px-3': close
+    }" class="flex flex-row position-relative" v-bind:data-message_id="message.message_id">
+    <div v-if="!close" class="flex align-items-center align-self-start mr-3">
+      <img height="40px" class="rounded-circle" :data-user_id="message.user_id" :src="'/storage/avatars/' + message.user_id + '.png'">
     </div>
-    <div class="chat-content">
-      <div v-if="!close" class="chat-user">
-        <h6 class="username">{{ user.username }}</h6>
-        <p class="chat-timestamp">{{ moment(message.created_at).calendar() }}</p>
+    <div :style="[close ? {'margin-left': 'calc(40px + 1rem)'} : {'margin': '0'}]" class="flex flex-column" style="width: 90%;">
+      <div v-if="!close" class="flex flex-row align-items-center">
+        <span class="font-weight-bold">{{ user.username }}</span>
+        <span class="ml-2" style="font-size: 12px;">{{ moment(message.created_at).calendar() }}</span>
       </div>
-      <div class="chat-text">
-        <p v-if="hasURL() && false" class="chat-markup">
-          <a v-bind:href="message.content" target="_blank" rel="noopener noreferrer">{{ message.content }}</a>
-        </p>
-        <p v-else class="chat-markup">{{ message.content }}</p>
-        <div class="chat-actions">
-          <a :id="'message-action-' + index" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" class="chat-action icon dropdown-toggle"><i class="material-icons">more_horiz</i></a>
-          <div class="dropdown-menu messages-actions" :aria-labelledby="'message-action-' + index">
-            <a @click="edit_message" data-toggle="modal" data-target="#message-edit-modal" class="dropdown-item" v-if="message.user_id == current_user.id">Edit</a>
-            <a @click="delete_message" class="dropdown-item" v-if="message.user_id == current_user.id">Delete</a>
-            <a @click="copyID(message.message_id)" class="dropdown-item">Copy ID</a>
-          </div>
-        </div>
+      <div class="content">
+        <p>{{ message.content }}</p>
+        <a v-if="hasImageURL()" v-for="(URL, index) in getURLs()" v-bind:href="URL" target="_blank" rel="noopener noreferrer"><img style="max-width: 30vw;" v-bind:src="URL" class="rounded mt-1"></img></a>
       </div>
-      <a v-if="hasImageURL()" v-for="(URL, index) in getURLs()" v-bind:href="URL" target="_blank"><img v-bind:src="URL" class="chat-markup"></img></a>
+    </div>
+    <div class="align-self-start ml-auto">
+      <a class="icon dropdown-toggle" :id="'message-action-' + index" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><i class="icon icon-more-vertical"></i></a>
+      <div class="dropdown-menu" :aria-labelledby="'message-action-' + index">
+        <a class="dropdown-item flex justify-content-center text-center" @click="edit_message" data-toggle="modal" data-target="#" v-if="message.user_id == current_user.id">Edit</a>
+        <a class="dropdown-item flex justify-content-center text-center" @click="delete_message(message.message_id)" v-if="message.user_id == current_user.id">Delete</a>
+        <a class="dropdown-item flex justify-content-center text-center" @click="copyID(message.message_id)">Copy ID</a>
+      </div>
     </div>
   </div>
 </template>
@@ -46,7 +49,7 @@
 
           var content = App_this.message.content;
           var mention = null;
-          var message = $("[data-message_id='" + App_this.message.message_id + "']").find(".chat-markup")[0];
+          var message = $("[data-message_id='" + App_this.message.message_id + "']").find("p")[0];
           this.$nextTick(function() {
             for (var i = 0; i < App_this.mentions.length; i++) {
               if (i == 0) {
@@ -88,7 +91,7 @@
               }
             }
             if (App_this.scrolled_bottom) {
-              $('#messages').scrollTop($('#messages')[0].scrollHeight);
+              $('#messages').scrollTop(1E10);
             }
           });
         },
