@@ -17,7 +17,17 @@
         <span :class="{ 'text-white': dark_mode }" class="ml-2" style="font-size: 12px;">{{ moment(message.created_at).calendar() }}</span>
       </div>
       <div class="content">
-        <p :class="{ 'text-light': dark_mode }">{{ message.content }}</p>
+        <p v-if="message.content.length > 0" :class="{ 'text-light': dark_mode }">{{ message.content }}</p>
+        <at-card v-if="hasFile()" :body-style="{ 'padding': '14px' }" :class="[ dark_mode ? 'bg-darker':'bg-alt', { 'border-darkest': dark_mode } ]" class="mt-2" :no-hover="true">
+          <div class="flex flex-row align-items-center">
+            <img height="40px" :src="file_icon">
+            <div class="flex flex-column ml-4">
+              <h4 :class="{ 'text-light': dark_mode }">{{ getFiles()[0].name }}</h4>
+              <p :class="{ 'text-light': dark_mode }">{{ format_bytes(getFiles()[0].size) }}</p>
+            </div>
+            <a :href="'/download/messages/' + message.message_id" target="_blank" :class="[ dark_mode ? 'text-light':'text-dark' ]" class="ml-auto"><i style="font-size: 1.25rem;" class="hover icon icon-download"></i></a>
+          </div>
+        </at-card>
         <a v-if="hasImageURL()" v-for="(URL, index) in getURLs()" v-bind:href="URL" target="_blank" rel="noopener noreferrer"><img style="max-width: 30vw;" v-bind:src="URL" class="rounded mt-1"></img></a>
       </div>
     </div>
@@ -33,6 +43,9 @@
 </template>
 
 <script>
+    import AtComponents from 'at-ui';
+    Vue.use(AtComponents);
+
     export default {
         mounted() {
           var App_this = this;
@@ -125,6 +138,13 @@
               console.error('Error copying ID to clipboard: ', err);
             });
           },
+          hasFile: function() {
+            return this.message.files !== null && JSON.parse(this.message.files).length > 0;
+          },
+          getFiles: function() {
+            var App_this = this;
+            return JSON.parse(App_this.message.files);
+          },
         },
         props: {
           current_user: [Array, Object],
@@ -145,6 +165,8 @@
           mentions: [Array],
           scrolled_bottom: [Boolean],
           dark_mode: [Boolean],
+          format_bytes: [Function],
+          file_icon: [String],
         },
     }
 </script>

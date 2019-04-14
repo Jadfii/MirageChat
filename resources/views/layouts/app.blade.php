@@ -45,7 +45,7 @@
     <link href="{{ asset('css/app.css') }}" rel="stylesheet">
 </head>
 <body>
-    <div class="app-container" :class="{ 'dark-mode': user_options && user_options.dark_mode }" id="app">
+    <div class="app-container" :class="{ 'dark-mode': user_options && user_options.dark_mode }" id="app" @dragenter="modals.files.drag = true; states.upload_area = true;" @dragleave="modals.files.drag = false; states.upload_area = false;" @dragover.prevent="modals.files.drag = true; states.upload_area = true;" @drop.prevent="uploadFile">
         @if (Auth::guest() or !Auth()->user()->email_verified_at)
             <main>
               <div class="container-fluid px-0 h-100">
@@ -90,7 +90,11 @@
                 </div>
             </transition>
 
-            <form id="logout-form" action="{{ route('logout') }}" method="POST" style="display: none;">
+            <div v-show="states.upload_area" class="w-100 h-100 position-fixed" style="z-index: 9999; top: 0; left: 0; right: 0; left: 0;">
+                <input class="d-none" type="file" name="file" id="file">
+            </div>
+
+            <form id="logout-form" action="{{ route('logout') }}" method="POST" class="d-none">
                 @csrf
             </form>
 
@@ -176,6 +180,27 @@
                     <div class="ml-auto">
                         <at-button @click.native="modals.remove_2fa = false">Cancel</at-button>
                         <at-button type="primary" @click.native="remove_2fa()">OK</at-button>
+                    </div>
+                </div>
+            </at-modal>
+
+            <at-modal v-model="modals.files.drag" :styles="{top: '50%', transform: 'translateY(-50%)'}" :show-footer="false" :mask-closable="false" :show-close="false">
+                <div class="flex flex-column align-items-center justify-content-center p-4">
+                    <img height="200px" src="{{ asset('icons/drag_file.svg') }}">
+                    <h1 class="mt-3">Drag and drop files</h1>
+                    <p>You are able to add a message after uploading.</p>
+                </div>
+            </at-modal>
+
+            <at-modal v-model="modals.files.upload" @on-confirm="sendFile" :styles="{top: '50%', transform: 'translateY(-50%)'}" ok-text="Upload" :show-close="false">
+                <div v-if="has(states.modal.item, 'file_name')" class="flex flex-column align-items-center justify-content-center p-4">
+                    <div class="flex flex-row align-items-center align-self-start">
+                        <img height="100px" src="{{ asset('icons/upload_file.svg') }}">
+                        <h1 class="mt-3 ml-3">@{{ states.modal.item.file_name }}</h1>
+                    </div>
+                    <div class="flex flex-column justify-content-center w-100 mt-5">
+                        <h6 class="text-uppercase font-weight-bold">Add message (optional)</h6>
+                        <at-input v-model="states.modal.item.message" :class="{ 'darker': user_options.dark_mode }" size="large" type="text" placeholder="Message" class="my-2" autofocus></at-input>
                     </div>
                 </div>
             </at-modal>

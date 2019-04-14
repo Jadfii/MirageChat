@@ -23,6 +23,8 @@
     :bottom="index == Object.keys(active_messages).length - 1"
     :scrolled_bottom="messages_bottom"
     :dark_mode="user_options.dark_mode"
+    :format_bytes="formatBytes"
+    :file_icon="'{{ asset('icons/file.svg') }}'"
     ></message>
   </div>
   <div :class="[ user_options.dark_mode ? 'border-darker' : 'border-light' ]" class="p-4 flex align-items-center justify-content-center flex-column border-top">

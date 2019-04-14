@@ -9,6 +9,7 @@ use App\Events\MessageRemove;
 use App\Events\MessageUpdate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class MessageController extends Controller
 {
@@ -19,7 +20,7 @@ class MessageController extends Controller
    */
   public function __construct(Request $request)
   {
-      $this->middleware('auth:api');
+      $this->middleware('auth:api', ['except' => ['download']]);
       $this->middleware('message.auth:view', ['except' => ['index', 'store']]);
       $this->middleware('message.auth:edit', ['only' => ['update', 'delete']]);
       $this->middleware('channel.auth:view', ['only' => ['store']]);
@@ -113,15 +114,38 @@ class MessageController extends Controller
       }
       $user = Auth::guard('api')->user();
 
-      $request->validate([
-          'content' => 'string|max:2000|present'
-       ]);
+      $content = $request->input('content');
+      $files = array();
+
+       if ($request->hasFile('file')) {
+         $request->validate([
+             'content' => 'max:2000|present',
+             'file' => 'file|max:8000'
+          ]);
+
+          if ($content == null) {
+            $content = '';
+          }
+
+         $file = $request->file('file');
+         $path = Storage::putFile('downloads', $request->file('file'));
+         $files[] = array(
+          'name' => $file->getClientOriginalName(),
+          'size' => $file->getSize(),
+          'path' => $path,
+        );
+       } else {
+         $request->validate([
+             'content' => 'required|max:2000|present'
+          ]);
+       }
 
       $message = Message::create([
         'user_id' => $user->id,
         'channel_id' => $channel->channel_id,
-        'content' => $request->input('content'),
+        'content' => $content,
         'read_by' => json_encode(array($user->id)),
+        'files' => json_encode($files),
       ]);
 
       broadcast(new MessageNew($user, $message));
@@ -184,6 +208,18 @@ class MessageController extends Controller
   }
 
   /**
+  * Download file(s) attached to message
+  *
+  * @param Request $request
+  * @param Message $message
+  * @return Response
+  */
+  public static function download(Request $request, Message $message)
+  {
+      return response()->download(storage_path('app/').json_decode($message->files)[0]->path, json_decode($message->files)[0]->name);
+  }
+
+  /**
   * Remove message from database
   *
   * @param Request $request
@@ -193,6 +229,8 @@ class MessageController extends Controller
   public static function delete(Request $request, Message $message)
   {
       $user = Auth::guard('api')->user();
+
+      Storage::delete(json_decode($message->files)[0]->path);
       broadcast(new MessageRemove($user, $message));
       $message->delete();
 

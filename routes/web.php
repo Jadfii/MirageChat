@@ -31,3 +31,5 @@ Route::get('/', 'HomeController@index')->name('home')->middleware(['verified']);
 
 Auth::routes(['verify' => true]);
 Route::get('/password/reset/{token}/{email}', 'Auth\ResetPasswordController@showResetForm')->name('password.reset');
+
+Route::get('/download/messages/{message}', 'MessageController@download');

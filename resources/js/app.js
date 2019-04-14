@@ -181,6 +181,7 @@ const App = new Vue({
         production: process.env.NODE_ENV == 'production',
         userlist: true,
         sidebar: true,
+        upload_area: false,
         account: {
           avatar: initialState.avatar,
           avatar_upload: initialState.avatar,
@@ -260,6 +261,10 @@ const App = new Vue({
        },
        enable_2fa: null,
        remove_2fa: null,
+       files: {
+         drag: null,
+         upload: null,
+       },
      },
      window: {
        width: window.innerWidth,
@@ -522,6 +527,19 @@ const App = new Vue({
       }
       return _.has(obj, path);
     },
+    // Convert bytes to readable file size
+    // Taken from: https://stackoverflow.com/questions/15900485/correct-way-to-convert-size-in-bytes-to-kb-mb-gb-in-javascript
+    formatBytes: function(bytes, decimals = 2) {
+      if (bytes === 0) return '0 Bytes';
+
+      const k = 1024;
+      const dm = decimals < 0 ? 0 : decimals;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    },
     // Scroll to bottom of messages container
     scrollBottomMessages: function() {
       var App_this = this;
@@ -775,6 +793,74 @@ const App = new Vue({
       .catch(function () {
         //
       });
+    },
+    // Method to upload a file
+    uploadFile: function(e) {
+      var App_this = this;
+      this.modals.files.drag = false;
+      this.states.upload_area = false;
+
+      if (e.dataTransfer.files.length > 1) {
+        this.$Modal.error({
+          title: 'Error',
+          content: 'You may only upload 1 file at a time.'
+        });
+        return null;
+      }
+
+      if (e.dataTransfer.files[0].size > 8388608) {
+        this.$Modal.error({
+          title: 'Error',
+          content: 'Max file size is 8MB!'
+        });
+        return null;
+      }
+
+      $('#file').prop("files", e.dataTransfer.files);
+
+      this.states.modal.item = {
+        'file_name': e.dataTransfer.files[0].name,
+        'file_size': App_this.formatBytes(e.dataTransfer.files[0].size),
+        'message': '',
+      };
+      this.modals.files.upload = true;
+    },
+    // Method to send a file
+    sendFile: function(e) {
+      var App_this = this;
+
+      var content = '';
+      content += this.states.modal.item.message;
+
+      var formData = new FormData();
+      formData.append('file', $('#file')[0].files[0]);
+      formData.append('content', content);
+
+      axios.post('/api/channels/' + App_this.states.current_channel, formData, {
+        headers: {
+          'content-type': 'multipart/form-data'
+        }
+      })
+      .then(function (response) {
+        if (!App_this.states.production) {
+          console.log(response);
+        }
+      })
+      .catch(function (error) {
+         if (!App_this.states.production) {
+           console.log(error);
+         }
+         App_this.$Modal.alert({
+           title: error.response.data.message,
+           content: error.response.data.errors.content[0],
+           okText: 'Okay',
+           styles: "{top: '50%', transform: 'translateY(-50%)'}",
+           callback: function(action) {
+             //
+           }
+         });
+      });
+      return;
     },
     // Method to create a channel
     createChannel: function(e) {
