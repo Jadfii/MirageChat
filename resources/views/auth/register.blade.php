@@ -1,52 +1,25 @@
 @extends('layouts.app')
-
 @section('content')
-<section class="h-100">
-    <div class="container h-100">
-      <div class="row justify-content-center h-100">
-        <div class="page-title">
-          <h1 class="card-title">{{ __('Register') }}</h1>
-          <h3 class="card-title">{{ __('Enter your information below to create an account') }}</h3>
-        </div>
-        <div class="form-wrapper">
-          <form method="POST" id="register-form" action="{{ route('register') }}">
-            @csrf
+<div class="my-2">
+  <h1 class="my-2">Register</h1>
+  <h4>Enter your information below to create an account</h4>
+</div>
+<form class="w-100 flex flex-column justify-content-center align-self-center" method="POST" action="{{ route('register') }}">
+  @csrf
+  <at-alert message="{{ $errors->first() }}" class="{{ $errors->all() ? '' : 'd-none' }}" type="error"></at-alert>
+  <at-input name="username" placeholder="Username" value="{{ old('username') }}" status="{{ $errors->has('username') ? 'error' : '' }}" type="text" size="large" class="my-2" required autofocus></at-input>
+  <at-input name="email" placeholder="Email" value="{{ old('email') }}" status="{{ $errors->has('email') ? 'error' : '' }}" type="email" size="large" class="my-2" required></at-input>
+  <at-input name="password" placeholder="Password" status="{{ $errors->has('password') ? 'error' : '' }}" type="password" size="large" class="my-2" required></at-input>
+  <at-input name="password_confirmation" placeholder="Repeat password" status="{{ $errors->has('password_confirmation') ? 'error' : '' }}" type="password" size="large" class="my-2" required></at-input>
+  {!! app('captcha')->display() !!}
+  <div class="my-2 mx-0 row">
+    <input type="submit" style="display: none;"></input>
+    <at-button type="primary" onclick="this.form.submit();">Register account</at-button>
+  </div>
+  <div class="my-2">Already have an account? <a href="/login">Sign in</a></div>
+</form>
+@endsection
 
-            <div class="form-group">
-              <input id="username" type="text" class="form-control form-field{{ $errors->has('name') ? ' is-invalid' : '' }}" name="username" value="{{ old('username') }}" required>
-              <label class="{{ old('username') ? 'active' : '' }}" for="username">{{ __('Username') }}</label>
-            </div>
-
-            <div class="form-group">
-              <input id="email" type="email" class="form-control form-field{{ $errors->has('email') ? ' is-invalid' : '' }}" name="email" value="{{ old('email') }}" required>
-              <label class="{{ old('email') ? 'active' : '' }}" for="email">{{ __('Email') }}</label>
-            </div>
-
-            <div class="form-group">
-              <input id="password" type="password" class="form-control form-field{{ $errors->has('password') ? ' is-invalid' : '' }}" name="password" required>
-              <label for="password">{{ __('Password') }}</label>
-            </div>
-
-            <div class="form-group">
-              <input id="password_confirmation" type="password" class="form-control form-field{{ $errors->has('password_confirmation') ? ' is-invalid' : '' }}" name="password_confirmation" required>
-              <label for="password_confirmation">{{ __('Repeat password') }}</label>
-            </div>
-
-            <div class="form-group form-options">
-              <p class="status-message bad">{{ $errors->first() }}</p>
-            </div>
-
-            <div class="form-group">
-              {!! app('captcha')->display() !!}
-            </div>
-
-            <div class="form-group no-margin">
-              <button type="submit" class="btn btn-primary btn-block">{{ __('Register account') }}</button>
-            </div>
-            <div class="margin-top20 text-center">{{ __('Already have an account?') }} <a href="/login">{{ __('Sign in') }}</a></div>
-          </form>
-        </div>
-      </div>
-    </div>
-</section>
+@section('illustration')
+<img height="250px" src="{{ asset('icons/register.svg') }}">
 @endsection

@@ -1,46 +1,23 @@
 @extends('layouts.app')
-
 @section('content')
-<section class="h-100">
-  <div class="container h-100">
-    <div class="row justify-content-center h-100">
-      <div class="page-title">
-        <h1 class="card-title">{{ __('Reset password') }}</h1>
-        <h3 class="card-title">{{ __('Enter your new password') }}</h3>
-      </div>
-      <div class="form-wrapper">
-        <form method="POST" id="reset_password-form" action="{{ route('password.update') }}">
-          @csrf
-
-          <input type="hidden" name="token" value="{{ $token }}">
-
-          <div class="form-group">
-            <input id="email" type="text" class="form-control form-field{{ $errors->has('email') ? ' is-invalid' : '' }}" name="email" value="{{ $email ?? old('email') }}" readonly>
-            <label for="email">{{ __('Email') }}</label>
-          </div>
-
-          <div class="form-group">
-             <input id="password" type="password" class="form-control form-field{{ $errors->has('password') ? ' is-invalid' : '' }}" name="password" required>
-             <label for="password">{{ __('Enter new password') }}</label>
-          </div>
-
-          <div class="form-group">
-             <input id="password_confirmation" type="password" class="form-control form-field{{ $errors->has('password') ? ' is-invalid' : '' }}" name="password_confirmation" required>
-             <label for="password_confirmation">{{ __('Confirm new password') }}</label>
-          </div>
-
-          <div class="form-group form-options">
-            <p class="status-message bad">{{ $errors->first() }}</p>
-          </div>
-
-          <div class="form-group no-margin">
-             <button type="submit" class="btn btn-primary btn-block">{{ __('Change password') }}</button>
-          </div>
-
-          <div class="margin-top20 text-center"><a href="/">{{ __('Go back') }}</a></div>
-        </form>
-      </div>
-    </div>
+<div class="my-2">
+  <h1 class="my-2">Reset password</h1>
+  <h4>Enter your new password below</h4>
+</div>
+<form class="w-100 flex flex-column justify-content-center align-self-center" method="POST" action="{{ route('password.update') }}">
+  @csrf
+  <at-alert message="{{ $errors->first() }}" class="{{ $errors->all() ? '' : 'd-none' }}" type="error"></at-alert>
+  <at-input name="email" placeholder="Email" status="{{ $errors->has('email') ? 'error' : '' }}" type="email" size="large" class="my-2" required autofocus></at-input>
+  <at-input name="password" placeholder="Password" status="{{ $errors->has('password') ? 'error' : '' }}" type="password" size="large" class="my-2" required></at-input>
+  <at-input name="password_confirmation" placeholder="Repeat password" status="{{ $errors->has('password_confirmation') ? 'error' : '' }}" type="password" size="large" class="my-2" required></at-input>
+  <div class="my-2 mx-0 row">
+    <input type="submit" style="display: none;"></input>
+    <at-button type="primary" onclick="this.form.submit();">Change password</at-button>
   </div>
-</section>
+  <div class="my-2"><a href="/">Go back</a></div>
+</form>
+@endsection
+
+@section('illustration')
+<img height="250px" src="{{ asset('icons/change_password.svg') }}">
 @endsection

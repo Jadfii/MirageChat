@@ -97,6 +97,10 @@ class ChannelController extends Controller
       //$snowflake->datacenterId = 2;
       $channel_id = $snowflake->next();
 
+      $request->validate([
+          'name' => 'required|string|min:1',
+      ]);
+
       $members = $request->input('members');
       $members = Channel::createMembersArray($request, $members);
       $members[] = $user->id;
@@ -139,6 +143,32 @@ class ChannelController extends Controller
 
       $channel->update([
         'name' => $request->input('name'),
+        'members' => json_encode($members),
+      ]);
+
+      broadcast(new ChannelUpdate($user, $channel::select($channel::$viewable)->where('channel_id', $channel->channel_id)->get()->first()->toArray(), $old_members));
+
+      return response()->json($channel::select($channel::$viewable)->where('channel_id', $channel->channel_id)->get()->first(), 200);
+  }
+
+  /**
+  * Leave channel
+  *
+  * @param Request $request
+  * @param Channel $channel
+  * @return Response
+  */
+  public static function leave(Request $request, Channel $channel)
+  {
+      $user = Auth::guard('api')->user();
+
+      $old_members = json_decode($channel->members);
+
+      $members = $old_members;
+      unset($members[array_search($user->id, $members)]);
+      $members = Channel::createMembersArray($request, $members);
+
+      $channel->update([
         'members' => json_encode($members),
       ]);
 

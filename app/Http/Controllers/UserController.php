@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\User;
 use App\Events\UserUpdate;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -71,6 +72,11 @@ class UserController extends Controller
       $data = json_decode(file_get_contents('php://input'), true);
       $user_id = (int)$data['events'][0]['user_id'];
       $user = User::findOrFail($user_id);
+
+      if (strpos($data['events'][0]['channel'], 'voice') !== false) {
+        return;
+      }
+
       switch ($data['events'][0]['name']) {
         case 'member_added': {
           $status = "online";
@@ -110,7 +116,9 @@ class UserController extends Controller
         }
       }
 
-      if (isset($data['password_old']) || isset($data['password']) || isset($data['password_confirmation'])) {
+      if (sizeof($data) == 1 && array_keys($data)[0]== 'options') {
+
+      } else {
         $request->validate([
             'password_old' => [
               'required',
@@ -120,10 +128,15 @@ class UserController extends Controller
                 }
               },
             ],
+         ], [ 'password_old.required' => 'You must enter your password.' ]);
+         unset($data['password_old']);
+      }
+
+      if (isset($data['password']) || isset($data['password_confirmation'])) {
+        $request->validate([
             'password' => 'required|string|min:6|confirmed',
          ]);
 
-         unset($data['password_old']);
          unset($data['password_confirmation']);
          $data['password'] = Hash::make($data['password']);
       }

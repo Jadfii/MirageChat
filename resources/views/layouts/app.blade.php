@@ -48,115 +48,139 @@
     <div class="app-container" :class="{ 'dark-mode': user_options && user_options.dark_mode }" id="app">
         @if (Auth::guest() or !Auth()->user()->email_verified_at)
             <main>
-                @yield('content')
+              <div class="container-fluid px-0 h-100">
+                <div class="row justify-content-center h-100 w-100">
+                  <div class="col col-md-12">
+                    <div class="w-50p position-relative flex flex-column">
+                      @yield('content')
+                    </div>
+                  </div>
+                  <div class="col col-alt bg-alt col-md-12 d-none d-md-none d-sm-none d-lg-flex flex justify-content-center align-items-center">
+                    @yield('illustration')
+                  </div>
+                </div>
+              </div>
             </main>
         @else
-            <transition name="fade">
-                <div class="overlay" onclick="return false;" v-show="!states.loaded && !states.offline">
-                  <svg class="spinner" viewBox="0 0 50 50">
-                    <circle class="path" cx="25" cy="25" r="20" fill="none" stroke-width="5"></circle>
-                  </svg>
-                </div>
-            </transition>
-
             <audio id="message_sound">
                 <source src="{{ asset('sounds/light.mp3') }}"></source>
             </audio>
 
+            <audio id="voice_call" :volume="states.voice.volume / 100">
+                <source src=""></source>
+            </audio>
+
+            <audio v-for="(peer, index) in states.voice.peers" :id="'voice_channel_user-' + peer.user_id" :volume="peer.volume / 100">
+                <source src=""></source>
+            </audio>
+
+            <audio id="incoming_call" loop>
+                <source src="{{ asset('sounds/incoming.mp3') }}"></source>
+            </audio>
+
+            <transition name="fade">
+                <div v-show="!states.loaded && false" :class="[ user_options.dark_mode ? 'bg-darker' : 'bg-alt' ]" class="w-100 h-100 position-fixed flex flex-column align-items-center justify-content-center" style="z-index: 99; top: 0; left: 0; right: 0; left: 0;">
+                    <div :class="{ 'dark': user_options.dark_mode }" class="loader triangle">
+                        <svg viewBox="0 0 86 80">
+                            <polygon points="43 8 79 72 7 72"></polygon>
+                        </svg>
+                    </div>
+                    <h1 :class="{ 'text-white': user_options.dark_mode }" class="font-weight-light mt-2" style="font-size: 2rem;">MirageChat</h1>
+                    <p :class="{ 'text-light': user_options.dark_mode }">Loading</p>
+                </div>
+            </transition>
+
             <form id="logout-form" action="{{ route('logout') }}" method="POST" style="display: none;">
                 @csrf
-
             </form>
 
-            <form-modal data-reset="true" :title="'Create channel'" :message="''" :id="'channel-create-modal'" :func="createChannel">
-                <template slot="body">
-                  <div class="form-group form-group-alt">
-                      <label for="channel_name">Channel Name</label>
-                      <input name="channel_name" type="text" class="form-control form-field" autocomplete="off" required>
-                      <div class="form-error"></div>
-                  </div>
-                  <div class="form-group form-group-alt">
-                      <label for="members">Members</label>
-                      <select name="members" class="custom-select" :size="users.length - 1" multiple>
-                        <option v-for="user in users" v-if="user.id !== current_user.id" :value="user.id">@{{ user.username }}</option>
-                      </select>
-                  </div>
-                </template>
-                <template slot="footer">
-                    <button type="submit" class="btn btn-primary btn-confirm">Confirm</button>
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                </template>
-            </form-modal>
+            <at-modal v-model="modals.incoming_call" title="Incoming call" ok-text="Answer" cancel-text="Decline" :mask-closable="false" :show-close="false">
+                <div v-if="states.voice.peer_id" class="flex flex-row align-items-center">
+                    <img height="70px" :class="{ 'avatar--active': states.voice.remoteStats.level > 0.2 }" class="avatar rounded-circle mx-1" :src="'{{ asset('storage/avatars') }}/' + states.voice.peer_id + '.png'" :data-user_id="states.voice.peer_id">
+                    <h4>@{{ findUser(states.voice.peer_id).username + ' is calling you' }}</h4>
+                </div>
+                <div slot="footer">
+                  <at-button type="error" @click="declineCall">Decline</at-button>
+                  <at-button type="success" @click="acceptCall">Accept</at-button>
+                </div>
+            </at-modal>
 
-            <form-modal :title="'Edit channel'" :message="''" :id="'channel-edit-modal'" :func="editChannel">
-                <template v-if="states.modal.item && states.modal.item.name" slot="body">
-                  <div class="form-group form-group-alt">
-                      <label for="channel_name">Channel Name</label>
-                      <input :value="states.modal.item.name" name="channel_name" type="text" class="form-control form-field" autocomplete="off" required>
-                      <div class="form-error"></div>
-                  </div>
-                  <div class="form-group form-group-alt">
-                      <label for="members">Members</label>
-                      <select name="members" class="custom-select" :size="users.length - 1" multiple>
-                        <option v-for="user in users" v-if="user.id !== current_user.id" :value="user.id" :selected="isMember(user.id, states.modal.item)">@{{ user.username }}</option>
-                      </select>
-                  </div>
-                </template>
-                <template slot="footer">
-                    <button type="submit" class="btn btn-primary btn-confirm">Confirm</button>
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                    <button @click="deleteChannel" type="button" class="btn btn-primary btn-delete mr-auto">Delete channel</button>
-                </template>
-            </form-modal>
+            <at-modal v-model="modals.voice_call" title="Voice call">
+                <div>
+                    <at-button @click="startCall()" type="success">Start call</at-button>
+                    <at-button @click="endCall" type="error">End call</at-button>
+                    <at-button @click="muteCall" type="info">Mute call</at-button>
+                    <at-button type="info" id="mute-self">Mute microphone</at-button>
+                    <at-slider v-model="states.voice.volume"></at-slider>
+                    <at-select placeholder="Peer" v-model="states.voice.peer_id" size="large">
+                      <at-option v-for="(user, index) in other_users" :key="user.id" :value="user.id">@{{ user.username }}</at-option>
+                    </at-select>
+                </div>
+            </at-modal>
 
-            <form-modal :title="'Edit message'" :message="''" :id="'message-edit-modal'" :func="editMessage">
-                <template slot="body">
-                  <div class="form-group form-group-alt">
-                      <label for="message_content">Message</label>
-                      <textarea v-if="states.modal.item" :value="states.modal.item.content" rows="3" style="height: auto;" name="message_content" class="inline-scroll scroll-light form-control form-field" autocomplete="off"></textarea>
-                      <div class="form-error"></div>
-                  </div>
-                </template>
-                <template slot="footer">
-                    <button type="submit" class="btn btn-primary btn-confirm">Confirm</button>
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                </template>
-            </form-modal>
+            <at-modal v-model="modals.create_channel" title="Create channel" @on-confirm="createChannel">
+              <at-input v-if="has(states.modal.content, 'name')" :class="{ 'darker': user_options.dark_mode }" size="large" type="text" placeholder="Channel name" v-model="states.modal.content.name" class="my-2"></at-input>
+              <at-select v-if="has(states.modal.content, 'members')" placeholder="Channel members" v-model="states.modal.content.members" multiple size="large">
+                <at-option v-for="(user, index) in other_users" :key="user.id" :value="user.id">@{{ user.username }}</at-option>
+              </at-select>
+            </at-modal>
 
-            <form-modal data-reset="true" :title="'Enable 2FA'" :message="''" :id="'enable-2fa-modal'" :func="confirm_2fa">
-                <template v-if="states.modal.item" slot="body">
-                    <div class="form-group form-group-alt qr-wrapper">
-                        <label>Scan QR Code</label>
-                        <img :src="states.modal.item.qr_img"></img>
-                        <p>Or enter this code into your authenticator app manually: @{{ states.modal.item.secret }}</p>
+            <at-modal v-model="modals.edit_message" title="Edit message" @on-confirm="editMessage">
+                <div v-if="has(states.modal.item, 'content')">
+                  <at-textarea v-model="states.modal.content" :class="{ 'darker': user_options.dark_mode }" autosize resize="none" max-rows="4"></at-textarea>
+                </div>
+            </at-modal>
+
+            <at-modal v-model="modals.edit_channel" title="Edit channel" @on-confirm="editChannel">
+              <at-input v-if="has(states.modal.item, 'name')" :class="{ 'darker': user_options.dark_mode }" size="large" type="text" v-model="states.modal.content.name" class="my-2"></at-input>
+              <at-select v-if="has(states.modal.item, 'members')" v-model="states.modal.content.members" multiple size="large">
+                <at-option v-for="(user, index) in other_users" :key="user.id" :value="user.id">@{{ user.username }}</at-option>
+              </at-select>
+              <div slot="footer" class="flex flex-row align-items-center">
+                  <at-button @click="deleteChannel" type="error">Delete channel</at-button>
+                  <div class="ml-auto">
+                      <at-button @click.native="modals.edit_channel = false">Cancel</at-button>
+                      <at-button type="primary" @click.native="editChannel(); modals.edit_channel = false">OK</at-button>
+                  </div>
+              </div>
+            </at-modal>
+
+            <at-modal v-model="modals.enable_2fa" title="Enable 2-Factor Authentication">
+                <div v-if="has(states.modal.item, 'qr_img')">
+                  <div>
+                      <h6 class="text-uppercase font-weight-bold">Scan QR Code</h6>
+                      <img :src="states.modal.item.qr_img"></img>
+                      <p>Or enter this code into your authenticator app manually: @{{ states.modal.item.secret }}</p>
+                  </div>
+                  <div class="mt-2">
+                      <h6 class="text-uppercase font-weight-bold">Enter 6-digit generated code</h6>
+                      <at-input v-model="states.modal.item.code" :class="{ 'darker': user_options.dark_mode }" size="large" type="text" placeholder="Authenticator code" class="my-2" autofocus></at-input>
+                  </div>
+                </div>
+                <div slot="footer" class="flex flex-row align-items-center">
+                    <div class="ml-auto">
+                        <at-button @click.native="modals.enable_2fa = false">Cancel</at-button>
+                        <at-button type="primary" @click.native="confirm_2fa()">OK</at-button>
                     </div>
-                    <div class="form-group form-group-alt">
-                        <label for="verify_code">Authenticator code</label>
-                        <input name="verify_code" type="text" class="form-control form-field" autocomplete="off" autofocus required>
-                        <div class="form-error"></div>
-                    </div>
-                </template>
-                <template slot="footer">
-                    <button type="submit" class="btn btn-primary btn-confirm">Confirm</button>
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                </template>
-            </form-modal>
+                </div>
+            </at-modal>
 
-            <form-modal data-reset="true" :title="'Remove 2FA'" :message="''" :id="'remove-2fa-modal'" :func="remove_2fa">
-                <template slot="body">
-                    <div class="form-group form-group-alt">
-                        <label for="verify_code">Authenticator code</label>
-                        <input name="verify_code" type="text" class="form-control form-field" autocomplete="off" autofocus required>
-                        <div class="form-error"></div>
+            <at-modal v-model="modals.remove_2fa" title="Remove 2-Factor Authentication">
+                <div v-if="has(states.modal.item, 'code')">
+                  <div>
+                      <h6 class="text-uppercase font-weight-bold">Enter 6-digit generated code</h6>
+                      <at-input v-model="states.modal.item.code" :class="{ 'darker': user_options.dark_mode }" size="large" type="text" placeholder="Authenticator code" class="my-2" autofocus></at-input>
+                  </div>
+                </div>
+                <div slot="footer" class="flex flex-row align-items-center">
+                    <div class="ml-auto">
+                        <at-button @click.native="modals.remove_2fa = false">Cancel</at-button>
+                        <at-button type="primary" @click.native="remove_2fa()">OK</at-button>
                     </div>
-                </template>
-                <template slot="footer">
-                    <button type="submit" class="btn btn-primary btn-confirm">Confirm</button>
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                </template>
-            </form-modal>
+                </div>
+            </at-modal>
 
-            <v-popover
+            <!--<v-popover
               v-if="states.popover.open"
               :style="tooltip_location"
               :offset="8"
@@ -171,243 +195,108 @@
                     <h5>@{{ states.popover.item.user.username }}</h5>
                 </div>
               </template>
-            </v-popover>
+          </v-popover>-->
 
             <transition name="scale">
-                <div v-show="states.settings.display" class="card-wrapper settings-wrapper" tabindex="0">
-                    <div class="settings-sidebar">
-                        <ul class="sidebar-nav settings-nav">
-                            <div class="settings-nav-heading">
-                              <h3>My Account</h3>
-                              <li data-setting="account_details" @click="changeSetting" :class="{ active: states.settings.active_tab == 'account_details' }"><a>Account Details</a></li>
-                            </div>
-                            <div class="settings-nav-heading">
-                              <h3>App Settings</h3>
-                              <li data-setting="notifications" @click="changeSetting" :class="{ active: states.settings.active_tab == 'notifications' }"><a>Notifications</a></li>
-                              <li data-setting="appearance" @click="changeSetting" :class="{ active: states.settings.active_tab == 'appearance' }"><a>Appearance</a></li>
-                            </div>
-                            <div class="settings-nav-heading">
-                              <li data-setting="app_information" @click="changeSetting" :class="{ active: states.settings.active_tab == 'app_information' }"><a>App Information</a></li>
-                            </div>
-                            <div class="settings-nav-heading">
-                              <li onclick="event.preventDefault();document.getElementById('logout-form').submit();"><a class="bad">Sign Out</a></li>
-                            </div>
-                        </ul>
-                    </div>
-                  <div class="settings-content-wrapper cards-scroll inline-scroll scroll-light">
-                    <div class="settings-content">
-                        <div>
-                            <div v-show="isActiveTab('account_details')" class="settings-body">
-                                <div class="heading-body">
-                                  <h4 class="heading-title">Account Details</h4>
-                                  <settings-frame>
-                                      <div class="user-settings">
-                                        <div class="user-settings-box">
-                                            <div v-if="!states.settings.account_edit" class="user-settings-inner viewing user">
-                                                <img :src="states.account.avatar" class="avatar avatar-xl">
-                                                <div class="user-settings-child">
-                                                    <div class="user-settings-info mb-20">
-                                                        <h3>{{ __('Username') }}</h3>
-                                                        <h6 class="username">@{{ current_user.username }}</h6>
-                                                    </div>
-                                                    <div class="user-settings-info">
-                                                        <h3>{{ __('Email') }}</h3>
-                                                        <h6 class="username">@{{ current_user.email }}</h6>
-                                                    </div>
-                                                </div>
-                                                <button v-on:click="states.settings.account_edit = true" type="button" class="btn btn-primary ml-auto user-settings-edit">{{ __('Edit') }}</button>
-                                            </div>
-                                            <div v-else class="user-settings-inner editing user">
-                                                <form @submit.prevent="editAccount">
-                                                  <div class="avatar-wrapper">
-                                                      <a class="avatar avatar-xl input-group">
-                                                        <div class="avatar avatar-xl" onclick="document.getElementById('avatar').click()">{{ __('Change Avatar') }}</div>
-                                                        <input @change="editAvatar" accept="image/x-png,image/jpeg,image/jpg" type="file" id="avatar" name="avatar">
-                                                        <input type="text" class="form-control" readonly>
-                                                        <img :src="this.states.account.avatar_upload" id="avatar-upload" class="avatar avatar-xl">
-                                                      </a>
-                                                  </div>
-
-                                                  <div class="info-wrapper">
-                                                      <div class="form-group">
-                                                          <input name="username" :value="current_user.username" type="text" class="form-control form-field">
-                                                          <label for="username" :class="{ active: current_user.username }">{{ __('Username') }}</label>
-                                                          <div class="form-error"></div>
-                                                      </div>
-
-                                                      <div class="form-group">
-                                                          <input name="email" :value="current_user.email" type="text" class="form-control form-field">
-                                                          <label for="email" :class="{ active: current_user.email }">{{ __('Email') }}</label>
-                                                          <div class="form-error"></div>
-                                                      </div>
-
-                                                      <h6 class="heading-subtitle">{{ __('Change password') }}</h6>
-
-                                                      <div class="form-group">
-                                                        <input id="password_old" type="password" class="form-control form-field" name="password_old" value="">
-                                                        <label for="password_old">{{ __('Current password') }}</label>
-                                                      </div>
-
-                                                      <div class="form-row">
-                                                        <div class="col">
-                                                          <div class="form-group">
-                                                            <input id="password" type="password" class="form-control form-field" name="password" value="">
-                                                            <label for="password">{{ __('New password') }}</label>
-                                                          </div>
-                                                        </div>
-
-                                                        <div class="col">
-                                                          <div class="form-group">
-                                                            <input id="password_confirmation" type="password" class="form-control form-field" name="password_confirmation" value="">
-                                                            <label for="password_confirmation">{{ __('Confirm new password') }}</label>
-                                                          </div>
-                                                        </div>
-                                                      </div>
-
-                                                      <div class="form-group form-submit">
-                                                          <div class="form-group no-margin">
-                                                            <button id="delete-account" type="button" class="btn btn-primary btn-delete">{{ __('Delete Account') }}</button>
-                                                          </div>
-
-                                                          <div class="form-group no-margin form-submit">
-                                                            <button v-on:click="states.settings.account_edit = false; states.account.avatar_upload = states.account.avatar" type="button" class="btn btn-secondary user-settings-close">{{ __('Cancel') }}</button>
-                                                            <button type="submit" class="btn btn-primary">{{ __('Save') }}</button>
-                                                          </div>
-                                                      </div>
-                                                  </div>
-                                                </form>
-                                            </div>
-                                        </div>
-                                      </div>
-                                  </settings-frame>
-                                  <h4 class="heading-title">2 Factor Authentication</h4>
-                                  <settings-frame>
-                                      <div class="form-group no-margin form-submit">
-                                        <button v-if="!current_user.google2fa_secret" @click="enable_2fa" data-toggle="modal" data-target="#enable-2fa-modal" class="btn btn-primary">{{ __('Enable 2FA') }}</button>
-                                        <button v-else data-toggle="modal" data-target="#remove-2fa-modal" class="btn btn-primary btn-delete">{{ __('Remove 2FA') }}</button>
-                                      </div>
-                                  </settings-frame>
-                                </div>
-                            </div>
-                            <div v-show="isActiveTab('appearance')" class="settings-body">
-                                <div class="heading-body">
-                                  <h4 class="heading-title">Appearance</h4>
-                                  <settings-frame>
-                                      <div class="heading-desc">
-                                          <h6 class="heading-subtitle">Dark mode</h6>
-                                          <p class="heading-text">Enable dark mode. Easy on the eyes.</p>
-                                      </div>
-                                      <settings-toggle :name="'dark_mode'" :user_options="user_options" :func="changeOption"></settings-toggle>
-                                  </settings-frame>
-                                </div>
-                            </div>
-                            <div v-show="isActiveTab('notifications')" class="settings-body">
-                                <div class="heading-body">
-                                  <h4 class="heading-title">Notifications</h4>
-                                  <settings-frame>
-                                      <div class="heading-desc">
-                                          <h6 class="heading-subtitle">Desktop Notifications</h6>
-                                          <p class="heading-text">Turn on desktop notifications to be alerted when a new message is recieved.</p>
-                                      </div>
-                                      <settings-toggle :name="'desktop_notifications'" :user_options="user_options" :func="changeOption"></settings-toggle>
-                                  </settings-frame>
-                                  <settings-frame>
-                                      <div class="heading-desc">
-                                          <h6 class="heading-subtitle">Message Sounds</h6>
-                                          <p class="heading-text">Recieve an alert sound when on new messages.</p>
-                                      </div>
-                                      <settings-toggle :name="'message_sounds'" :user_options="user_options" :func="changeOption"></settings-toggle>
-                                  </settings-frame>
-                                </div>
-                            </div>
-                            <div v-show="isActiveTab('app_information')" class="settings-body">
-                                <div class="heading-body">
-                                  <h4 class="heading-title">App Information</h4>
-                                  <settings-frame class="flex-column">
-                                      <p><b>Version: </b>{{ Version::version() }}</p>
-                                      <p><b>Build: </b>{{ Version::build() }}</p>
-                                  </settings-frame>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <a v-on:click="states.settings.display = false" class="close icon settings-close" data-toggle="tooltip" data-placement="top" title="Close"><i class="material-icons">{{ __('close') }}</i></a>
-                  </div>
-                </div>
+                @yield('settings')
             </transition>
 
             <transition name="scale-under">
                 <main v-show="!states.settings.display">
-                    <nav class="navbar fixed-top" v-bind:class="{ 'userlist-hide': !states.userlist, 'sidebar-hide': !states.sidebar}">
-                      <div class="navbar-nav">
-                        <a v-on:click="states.sidebar= !states.sidebar" class="menu icon" data-toggle="tooltip" data-placement="top" title="Sidebar"><i class="material-icons">menu</i></a>
-                        <h5 v-if="active_channel">@{{ active_channel.name }}</h5>
-                      </div>
-
-                      <div class="navbar-nav ml-auto">
-                          <div class="ui-actions ml-auto">
-                            <a v-on:click="states.userlist = !states.userlist" class="icon" id="user-list" data-toggle="tooltip" data-placement="top" title="User List"><i class="material-icons">supervised_user_circle</i></a>
+                    <div class="container-fluid px-0 h-100">
+                      <div class="row h-100 w-100 flex-nowrap">
+                          <div class="flex flex-column h-100" style="flex: 0 0 auto; flex-basis: 0;">
+                              <div  :class="[ user_options.dark_mode ? 'bg-darkest' : 'bg-darker' ]" class="flex flex-row align-items-center p-3" :style="{ height: window.nav_height + 'px' }">
+                                  <status-badge class="border-0" theme="darker" :status="current_user.status">
+                                    <img height="30px" class="rounded-circle" src="{{ asset('storage/avatars/'.Auth::user()->id.'.png') }}" data-user_id="{{ Auth::user()->id }}">
+                                  </status-badge>
+                                  <h4 class="mx-2 text-white">@{{ current_user.username }}</h4>
+                                  <div class="ml-auto text-white">
+                                      <a class="mx-1" @click="modals.voice_call = true" data-toggle="tooltip" data-placement="top" title="Voice Call"><i class="icon icon-mic"></i></a>
+                                      <a class="mx-1" @click="states.settings.display = true" data-toggle="tooltip" data-placement="top" title="User Settings"><i class="icon icon-settings"></i></a>
+                                  </div>
+                              </div>
+                              <at-menu width="300px" theme="dark" :class="[ user_options.dark_mode ? 'bg-darker':'bg-dark' ]" class="flex-fill border-0 py-4" mode="vertical" :active-name="states.current_channel">
+                                  <h5 class="text-white text-uppercase ls-1 my-2 pl-32">Channels - @{{ channels.length }}</h5>
+                                  <at-menu-item v-for="(channel, index) in channels" :key="channel.channel_id" :name="channel.channel_id">
+                                      <div @click="states.current_channel = channel.channel_id" class="position-relative flex align-items-center" style="overflow: hidden;">
+                                          <i class="icon icon-hash"></i>
+                                          @{{ channel.name }}
+                                          <i v-if="!states.voice.connected" @click="joinVoiceChannel(channel.channel_id)" style="z-index: 2;" class="ml-auto hover icon icon-mic" data-toggle="tooltip" data-placement="top" data-original-title="Join voice chat"></i>
+                                          <i v-else @click="leaveVoiceChannel(channel.channel_id)" style="z-index: 2;" class="ml-auto hover icon icon-mic-off" data-toggle="tooltip" data-placement="top" data-original-title="Leave voice chat"></i>
+                                          <i v-if="channel.user_id == current_user.id" @click="editChannel(channel)" style="z-index: 2;" class="hover icon icon-settings" data-toggle="tooltip" data-placement="top" title="Edit channel"></i>
+                                          <i v-else @click="leaveChannel(channel)" style="z-index: 2;" class="hover icon icon-user-minus" data-toggle="tooltip" data-placement="top" title="Leave channel"></i>
+                                          <at-tag v-show="unread[channel.channel_id] > 0" color="error">@{{ unread[channel.channel_id] }}</at-tag>
+                                      </div>
+                                  </at-menu-item>
+                                  <li class="at-menu__item">
+                                    <div class="at-menu__item-link">
+                                        <div @click="createChannel" class="position-relative flex align-items-center" style="overflow: hidden;">
+                                            <i class="icon icon-plus"></i>
+                                            <span>Create new channel</span>
+                                        </div>
+                                    </div>
+                                  </li>
+                                  <h5 class="text-white text-uppercase ls-1 my-2 mt-4 pl-32">Voice chat</h5>
+                                  <div class="flex flex-column">
+                                      <div class="" style="padding-left: 32px;">
+                                          <span class="">Voice status: <b>@{{ states.voice.connected ? 'Connected' : 'Disconnected' }}</b></span>
+                                      </div>
+                                      <div v-if="states.voice.connected" class="flex flex-column align-items-start my-2" style="padding-left: 32px;">
+                                          <div class="flex flex-row align-items-center">
+                                              <img height="30px" width="30px" :class="{ 'avatar--active': states.voice.localStats.active }" class="avatar rounded-circle my-1" :src="'{{ asset('storage/avatars') }}/' + current_user.id + '.png'" :data-user_id="current_user.id">
+                                              <span class="ml-2" :style="[states.voice.localStats.active ? { 'text-shadow': '0 0 0.05px white' } : { 'text-shadow': 'none' }]">@{{ current_user.username }}</span>
+                                          </div>
+                                          <div v-for="(peer, index) in states.voice.peers" class="flex flex-row align-items-center">
+                                              <img height="30px" width="30px" class="avatar rounded-circle my-1" :src="'{{ asset('storage/avatars') }}/' + peer.user_id + '.png'" :data-user_id="peer.user_id">
+                                              <span class="ml-2">@{{ findUser(peer.user_id).username }}</span>
+                                          </div>
+                                          <!--<div class="flex flex-row align-items-center">
+                                              <img height="30px" width="30px" :class="{ 'avatar--active': states.voice.remoteStats.active }" class="avatar rounded-circle my-1" :src="'{{ asset('storage/avatars') }}/' + states.voice.peer_id  + '.png'" :data-user_id="states.voice.peer_id">
+                                              <span class="ml-2" :style="[states.voice.remoteStats.active ? { 'text-shadow': '0 0 0.05px white' } : { 'text-shadow': 'none' }]">@{{ findUser(states.voice.peer_id).username }}</span>
+                                          </div>-->
+                                      </div>
+                                  </div>
+                              </at-menu>
+                          </div>
+                          <div :class="{ 'bg-dark': user_options.dark_mode }" class="flex flex-column flex-grow-1" style="flex: 0 0 auto; flex-basis: 0;">
+                              <div class="border-bottom" :class="[ user_options.dark_mode ? 'border-darker' : 'border-light' ]" :style="{ height: window.nav_height + 'px' }">
+                                  <div class="flex align-items-center w-100 h-100">
+                                      <h4 :class="{ 'text-white': user_options.dark_mode }" class="mx-4">@{{ active_channel ? active_channel.name: '' }}</h4>
+                                  </div>
+                              </div>
+                              <div class="flex-fill position-relative">
+                                  @yield('chat')
+                              </div>
+                          </div>
+                          <div class="flex flex-column mr-auto h-100" style="flex: 0 0 auto; flex-basis: 0;">
+                              <at-menu width="300px" theme="dark" :class="[ user_options.dark_mode ? 'bg-darker':'bg-dark' ]" class="flex-fill pt-4 border-0" mode="vertical" :active-name="states.current_channel">
+                                  <h5 v-if="usersStatus.online.length" class="text-white text-uppercase ls-1 mb-2 pl-32">Online - @{{ usersStatus.online.length }}</h5>
+                                  <li class="at-menu__item" v-for="(user, index) in usersStatus.online" :key="user.id" :name="user.username" :class="{ 'mb-2': index == usersStatus.online.length - 1 }">
+                                    <div class="at-menu__item-link">
+                                        <div class="position-relative" style="overflow: hidden;">
+                                            <status-badge offset="16px" class="border-0 mr-2" theme="dark" :status="user.status">
+                                              <img height="30px" class="rounded-circle" :data-user_id="user.id" :src="'{{ asset('storage/avatars') }}/' + user.id + '.png'">
+                                            </status-badge>
+                                            <span class="mx-2">@{{ user.username }}</span>
+                                        </div>
+                                    </div>
+                                  </li>
+                                  <h5 v-if="usersStatus.offline.length" class="text-white text-uppercase ls-1 mb-2 pl-32">Offline - @{{ usersStatus.offline.length }}</h5>
+                                  <li class="at-menu__item" v-for="(user, index) in usersStatus.offline" :key="user.id" :name="user.username" :class="{ 'mb-2': index == usersStatus.offline.length - 1 }">
+                                    <div class="at-menu__item-link">
+                                        <div class="position-relative" style="overflow: hidden;">
+                                            <status-badge offset="16px" class="border-0 mr-2" theme="dark" :status="user.status">
+                                              <img height="30px" class="rounded-circle" :data-user_id="user.id" :src="'{{ asset('storage/avatars') }}/' + user.id + '.png'">
+                                            </status-badge>
+                                            <span class="mx-2">@{{ user.username }}</span>
+                                        </div>
+                                    </div>
+                                  </li>
+                              </at-menu>
                           </div>
                       </div>
-
-                      <div v-show="states.sidebar" class="sidebar sidebar-wrapper sidebar-toggle">
-                        <div class="sidebar-inner">
-                            <div class="brand">
-                                  <user-frame :user="current_user" :text="true"></user-frame>
-                                  <div class="user-actions ml-auto">
-                                    <span data-toggle="modal" data-target="#channel-create-modal">
-                                        <a class="icon" id="channel-create" data-toggle="tooltip" data-placement="top" title="Create Channel"><i class="material-icons">add</i></a>
-                                    </span>
-                                    <a v-on:click="states.settings.display = true" class="icon" id="settings" data-toggle="tooltip" data-placement="top" title="Account Settings"><i class="material-icons">settings</i></a>
-                                  </div>
-                            </div>
-                            <ul class="sidebar-nav" id="channels">
-                              <h3>Channels - @{{ channels.length }}</h3>
-                              <li v-for="(channel, key, index) in channels" v-bind:data-channel_id="channel.channel_id" v-bind:class="{ active: channel.channel_id == states.current_channel }">
-                                <a v-on:click="states.current_channel = channel.channel_id">
-                                    <i class="material-icons">people</i>
-                                    <div class="channel-name">@{{ channel.name }}</div>
-                                </a>
-                                <div class="channel-actions justify-content-end">
-                                    <div v-if="channel.user_id == current_user.id" @click="states.modal.item = channel" class="icon" id="channel-settings" data-toggle="modal" data-target="#channel-edit-modal"><i data-toggle="tooltip" data-placement="top" title="Edit channel" class="material-icons">settings</i></div>
-                                    <span v-show="unread[channel.channel_id] !== 0" class="badge new-message">@{{ unread[channel.channel_id] }}</span>
-                                </div>
-                              </li>
-                              <li class="create-channel">
-                                <a data-toggle="modal" data-target="#channel-create-modal">
-                                    <i class="material-icons">add</i>
-                                    <div class="channel-name">Create new channel</div>
-                                </a>
-                              </li>
-                            </ul>
-                        </div>
-                      </div>
-
-                      <div v-show="states.userlist" class="sidebar sidebar-wrapper sidebar-toggle sidebar-left inline-scroll scroll-dark">
-                        <ul class="sidebar-nav" id="users">
-                            <a @click="states.userlist = false" class="close icon"><i class="material-icons">close</i></a>
-                              <h3 v-if="usersStatus.online.length">Online - @{{ usersStatus.online.length }}</h3>
-                              <li v-for="(user, index) in usersStatus.online" :class="{ bottom: isLast(index, usersStatus.online) }">
-                                <a data-toggle="popover" data-placement="left" :data-user_id="user.id">
-                                    <div class="channel-icon">
-                                        <user-frame :user="user"></user-frame>
-                                    </div>
-                                    @{{ user.username }}
-                                </a>
-                              </li>
-                              <h3 v-if="usersStatus.offline.length">Offline - @{{ usersStatus.offline.length }}</h3>
-                              <li v-for="(user, index) in usersStatus.offline" :class="{ bottom: isLast(index, usersStatus.offline) }">
-                                <a data-toggle="popover" data-placement="left" :data-user_id="user.id">
-                                    <div class="channel-icon">
-                                        <user-frame :user="user"></user-frame>
-                                    </div>
-                                    @{{ user.username }}
-                                </a>
-                              </li>
-                        </ul>
-                      </div>
-                    </nav>
-                    @yield('content')
+                    </div>
                 </main>
             </transition>
             <div class="background dark-bg"></div>

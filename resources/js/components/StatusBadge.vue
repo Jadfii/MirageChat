@@ -1,30 +1,39 @@
 <template>
-  <span
-  class="status-badge"
-  v-bind:class="status"
-  :style="profile ? {'height': '20px','width': '20px','top': '68px','left': '68px',} : null"
-  data-toggle="tooltip"
-  data-placement="top"
-  v-bind:title="status | capitalise"
-  v-bind:data-original-title="status | capitalise"
-  ></span>
+  <span class="status-badge"
+  :class="[ status ? `status-badge--${status}` : '',
+  size ? `status-badge--${size}` : '',
+  theme ? `status-badge--${theme}` : '' ]">
+    <slot></slot>
+    <sup
+    class="status-badge__content rounded-circle"
+    data-toggle="tooltip"
+    data-placement="top"
+    :title="status_format"
+    :data-original-title="status_format"
+    :data-offset-tooltip="offset"
+    ></sup>
+  </span>
 </template>
 
 <script>
+
     export default {
         mounted() {
           //
         },
+        computed: {
+          status_format: function() {
+            return this.status.charAt(0).toUpperCase() + this.status.slice(1);
+          },
+        },
         props: {
           status: [String],
-          size: {
-            default: '13px',
-            type: String
+          size: [String],
+          theme: {
+            default: 'light',
+            type: String,
           },
-          profile: {
-            default: false,
-            type: [Boolean],
-          },
+          offset: [String],
         },
     }
 </script>

@@ -11,8 +11,15 @@ const mix = require('laravel-mix');
  |
  */
 
+Mix
+
 mix.js('resources/js/app.js', 'public/js')
-   .sass('resources/sass/app.scss', 'public/css');
+   .sass('resources/sass/app.scss', 'public/css')
+   .options({
+      processCssUrls: false
+   });
+
+mix.copyDirectory('node_modules/at-ui-style/src/fonts', 'public/css/fonts');
 
 if (mix.inProduction()) {
    mix.version();
