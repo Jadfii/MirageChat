@@ -16,6 +16,8 @@ window.autosize = require('autosize');
 window.isOnline = require('is-online');
 window.away = require('away');
 window.Push = require('push.js');
+window.SimplePeer = require('simple-peer');
+import AtComponents from 'at-ui';
 
 /**
  * Initialise Sentry
@@ -57,12 +59,16 @@ Vue.component('avatar', require('./components/Avatar.vue').default);
 Vue.component('user-frame', require('./components/UserFrame.vue').default);
 Vue.component('settings-frame', require('./components/SettingsFrame.vue').default);
 Vue.component('settings-toggle', require('./components/SettingsToggle.vue').default);
-Vue.component('message-frame', require('./components/MessageFrame.vue').default);
+Vue.component('message', require('./components/Message.vue').default);
 
 /**
  * Declare Vue filters
  */
- // Filter to capitalise strings
+// Filter to get object properties
+import get from 'lodash';
+Vue.filter("get", (obj, path) => get(obj, path));
+
+// Filter to capitalise strings
 Vue.filter("capitalise", function(value) {
   if (!value) {
     return "";
@@ -107,8 +113,47 @@ Vue.use(VuejsDialog, {
 // Use v-tooltip
 Vue.use(VTooltip);
 
+// Use AT-UI
+Vue.use(AtComponents);
+
 // Pass initial state data into a global variable inside app.js file
 var initialState = window.__INITIAL_STATE__;
+
+// Initialise SimplePeer
+var p = null;
+var peers = {};
+var get_stats = null;
+
+// Set ICE servers
+var ICE_SERVERS = [
+  {urls: "stun:stun.l.google.com:19302"},
+  {urls: "stun:global.stun.twilio.com:3478?transport=udp"},
+  {
+    urls: "stun:eu-turn4.xirsys.com",
+    credential: "328950d4-4058-11e9-9516-375204dc2d7f",
+    username: "32895020-4058-11e9-9aaa-164f82c433be",
+  },
+  {
+    urls: "turn:eu-turn4.xirsys.com:80?transport=udp",
+    credential: "328950d4-4058-11e9-9516-375204dc2d7f",
+    username: "32895020-4058-11e9-9aaa-164f82c433be",
+  },
+  {
+    urls: "turn:eu-turn4.xirsys.com:3478?transport=udp",
+    credential: "328950d4-4058-11e9-9516-375204dc2d7f",
+    username: "32895020-4058-11e9-9aaa-164f82c433be",
+  },
+  {
+    urls: "turn:eu-turn4.xirsys.com:80?transport=tcp",
+    credential: "328950d4-4058-11e9-9516-375204dc2d7f",
+    username: "32895020-4058-11e9-9aaa-164f82c433be",
+  },
+  {
+    urls: "turn:eu-turn4.xirsys.com:3478?transport=tcp",
+    credential: "328950d4-4058-11e9-9516-375204dc2d7f",
+    username: "32895020-4058-11e9-9aaa-164f82c433be",
+  },
+]
 
 var throttle = _.throttle((func) => {
   func();
@@ -139,17 +184,23 @@ const App = new Vue({
         account: {
           avatar: initialState.avatar,
           avatar_upload: initialState.avatar,
+          username: initialState.current_user.username,
+          email: initialState.current_user.email,
+          password: '',
         },
         settings: {
           display: false,
           account_edit: false,
+          password_edit: false,
           active_tab: 'account_details',
+          options: null,
         },
         current_channel: [],
         modal: {
           item: null,
           title: '',
           message: '',
+          content: '',
         },
         popover: {
           open: false,
@@ -166,6 +217,30 @@ const App = new Vue({
           users: [],
           timer: null,
         },
+        voice: {
+          connected: false,
+          initiated: false,
+          channel_id: null,
+          offer: null,
+          answer: null,
+          peers: [],
+          peer_id: null,
+          volume: 100,
+          localStream: null,
+          remoteStream: null,
+          localStats: {
+            active: false,
+            level: null,
+            bytesSent: 0,
+            packetsSent: 0,
+          },
+          remoteStats: {
+            active: false,
+            level: null,
+            bytesSent: 0,
+            packetsSent: 0,
+          }
+        },
         messages: {
           scroll: {
             position: null,
@@ -174,9 +249,22 @@ const App = new Vue({
           }
         },
      },
+     modals: {
+       create_channel: null,
+       edit_message: null,
+       edit_channel: null,
+       incoming_call: null,
+       voice_call: null,
+       messages: {
+         calling: null,
+       },
+       enable_2fa: null,
+       remove_2fa: null,
+     },
      window: {
        width: window.innerWidth,
        height: window.innerHeight,
+       nav_height: '60',
      },
   },
   created: function() {
@@ -187,7 +275,9 @@ const App = new Vue({
     var App_this = this;
     _.delay(function() {
       App_this.states.loaded = true;
-    }, 4000);
+    }, 5000);
+
+    this.states.settings.options = this.user_options;
 
     // Set current channel to first channel in list
     if (this.channels.length > 0) {
@@ -224,8 +314,6 @@ const App = new Vue({
         }
       }
     });
-
-    this.scrollBottomMessages();
   },
   watch: {
     messages: function() {
@@ -246,26 +334,31 @@ const App = new Vue({
         if (App_this.states.settings.account_edit) {
           App_this.states.settings.account_edit = false;
         }
+        App_this.states.settings.password_edit = false;
         // Set active tab to first tab
-        App_this.states.settings.active_tab = $('[data-setting]').first().data('setting');
+        App_this.states.settings.active_tab = 'account_details';
+      }, 500);
+    },
+    'states.settings.account_edit': function() {
+      var App_this = this;
+      this.states.settings.password_edit = false;
+      this.states.account.password = '';
+      setTimeout(function() {
+        App_this.states.account.username = App_this.current_user.username;
+        App_this.states.account.email = App_this.current_user.email;
       }, 500);
     },
     'states.current_channel': function() {
       var App_this = this;
       // Scroll to bottom of message container on channel change
-      Vue.nextTick(function() {
-        $('#messages').scrollTop(1E10);
-        App_this.states.typing.message = '';
-      });
+      this.scrollBottomMessages();
       if (this.unread[this.states.current_channel] > 0) {
         this.readChannel(this.states.current_channel);
       }
+      $('#message_box').find('textarea').focus();
     },
     'states.typing.focused': function() {
       var App_this = this;
-    },
-    'states.modal.item': function() {
-      autosize($('textarea'));
     },
     'window.width': function() {
       if (this.window.width <= 768) {
@@ -308,6 +401,11 @@ const App = new Vue({
     users_sorted: function() {
       return _.sortBy(this.users, ['username']);
     },
+    // Computed to get all users but current user
+    other_users: function() {
+      var App_this = this;
+      return _.reject(this.users, function(user) { return user.id == App_this.current_user.id; });
+    },
     // Computed data to seperate users by their status
     usersStatus: function() {
       var users = this.active_users;
@@ -338,6 +436,19 @@ const App = new Vue({
         return this.getMembers(this.findChannel(this.states.current_channel));
       } else {
         return this.users_sorted;
+      }
+    },
+    // Computed to get all users with access to current channel but current user
+    other_active_users: function() {
+      var App_this = this;
+      if (this.active_channel) {
+        return _.reject(this.getMembers(this.findChannel(this.states.current_channel)), function(user) {
+          return user.id == App_this.current_user.id;
+        });
+      } else {
+        return _.reject(this.users_sorted, function(user) {
+          return user.id == App_this.current_user.id;
+        });
       }
     },
     // Set the message for the current typing users
@@ -397,15 +508,34 @@ const App = new Vue({
     }
   },
   methods: {
+    // Get object property
+    get: function(obj, path) {
+      if (!obj) {
+        return false;
+      }
+      return _.get(obj, path);
+    },
+    // Check if object property exists
+    has: function(obj, path) {
+      if (!obj) {
+        return false;
+      }
+      return _.has(obj, path);
+    },
     // Scroll to bottom of messages container
     scrollBottomMessages: function() {
-      var scrollTimer = setInterval(function() {
-        $('#messages').scrollTop(1E10);
-      }, 100);
-
-      setTimeout(function() {
-        clearInterval(scrollTimer);
-      }, 1000);
+      var App_this = this;
+      Vue.nextTick(function() {
+        if (App_this.hasImage(App_this.states.current_channel)) {
+          var scroll_timer = setInterval(function() {
+            $('#messages').scrollTop(1E10);
+          }, 100);
+          setTimeout(function() {
+            clearInterval(scroll_timer);
+          }, 300);
+        }
+        App_this.states.typing.message = '';
+      });
     },
     // Method to toggle popover state
     togglePopover: function(data) {
@@ -439,6 +569,10 @@ const App = new Vue({
     findMessages: function(channel_id) {
       return this.messages.filter(message => message.channel_id == channel_id);
     },
+    // Method to grab avatar for user
+    getAvatar: function(user_id) {
+      return '/storage/avatars/'+user_id+'.png';
+    },
     // Method to get members as array from channel
     getMembers: function(channel) {
       var App_this = this;
@@ -448,6 +582,15 @@ const App = new Vue({
         return _.sortBy(JSON.parse(channel.members).map(user => App_this.findUser(user)), ['username']);
       }
     },
+    // Method to get members usernames as array from channel
+    getMembersNames: function(channel) {
+      var App_this = this;
+      if (typeof channel == 'undefined') {
+        return [];
+      } else {
+        return _.sortBy(JSON.parse(channel.members).map(user => App_this.findUser(user).username), ['username']);
+      }
+    },
     // Method to determine if user is member of channel
     isMember: function(user_id, channel) {
       var App_this = this;
@@ -455,6 +598,16 @@ const App = new Vue({
         return false;
       }
       return typeof _.find(App_this.getMembers(channel), {'id': user_id}) !== 'undefined';
+    },
+    // Method to check if a channel has an image in it
+    hasImage: function(channel_id) {
+      var App_this = this;
+      var messages = this.findMessages(channel_id);
+      return this.messages.filter(function(message) {
+        return _.find(message.content.split(' '), function(val) {
+          return val.match(/\.(jpeg|jpg|gif|png)$/);
+        }) != null;
+      }).length > 0;
     },
     // Method to get number of unread messages in channel
     getUnread: function(channel_id) {
@@ -524,17 +677,14 @@ const App = new Vue({
       var App_this = this;
       if (!e.shiftKey && !this.states.typing.autocomplete) {
         e.preventDefault();
-        var content = $(e.target).closest(".chat-box").find("textarea");
+        var content = this.states.typing.message;
         var channel = this.states.current_channel;
 
-        if (typeof content.val() !== 'undefined' && content.val().trim() !== '') {
+        if (typeof content !== 'undefined' && content.trim() !== '') {
           axios.post('/api/channels/' + channel, {
-             content: content.val(),
+             content: content.trim(),
           })
           .then(function (response) {
-            autosize.update(content);
-            content.focus();
-
             App_this.states.typing.active = false;
             App_this.states.typing.message = '';
             App_this.states.typing.suggested_mentions = [];
@@ -554,16 +704,15 @@ const App = new Vue({
              if (!App_this.states.production) {
                console.log(error);
              }
-             App_this.$dialog.alert({
+             App_this.$Modal.alert({
                title: 'Your message is too long',
-               body: error.response.data.errors.content[0],
-             }, {
-               animation: 'none',
+               content: error.response.data.errors.content[0],
                okText: 'Okay',
+               styles: "{top: '50%', transform: 'translateY(-50%)'}",
+               callback: function(action) {
+                 //
+               }
              })
-             .then(function (dialog) {
-               //
-             });
           });
         }
       }
@@ -571,41 +720,41 @@ const App = new Vue({
     // Function to enable user to edit a message of theirs
     editMessage: function(e) {
       var App_this = this;
-      var message_id = parseInt($(e.target).closest(".chat-message").attr("data-message_id"));
-      if (this.states.modal.item && this.states.modal.item.hasOwnProperty("content") && this.states.modal.item.message_id == message_id) {
-        var modal = $('#message-edit-modal');
-        var content = modal.find("textarea").val().trim();
-
-        if (content !== this.states.modal.item.content) {
+      if (typeof e !== 'undefined') {
+        var message_id = parseInt($(e.target).closest("[data-message_id]").attr("data-message_id"));
+        this.states.modal.item = this.findMessage(message_id);
+        if (typeof this.states.modal.item !== 'undefined') {
+          this.states.modal.content = this.states.modal.item.content;
+          this.modals.edit_message = true;
+        }
+      } else {
+        if (this.states.modal.content.trim() !== this.states.modal.item.content) {
           axios.put('/api/messages/' + this.states.modal.item.message_id, {
-             content: content,
+             content: this.states.modal.content.trim(),
           })
            .then(function (response) {
              if (!App_this.states.production) {
                console.log(response);
              }
-             modal.modal('hide');
            })
            .catch(function (error) {
+             this.states.modal.content = '';
+             this.states.modal.item = null;
              if (!App_this.states.production) {
                console.log(error);
              }
           });
-        } else {
-          modal.modal('hide');
         }
-      } else {
-        this.states.modal.item = this.findMessage(message_id);
       }
     },
     // Function to delete a message
-    deleteMessage: function(e) {
+    deleteMessage: function(message_id) {
       var App_this = this;
-      var message_id = parseInt($(e.target).closest(".chat-message").attr("data-message_id"));
 
-      this.$dialog.confirm({
+      this.$Modal.confirm({
         title: 'Delete message',
-        body: 'Are you sure you want to delete the message "' + this.findMessage(message_id).content + '"?',
+        content: 'Are you sure you want to delete the message "' + this.findMessage(message_id).content + '"?',
+        styles: "{top: '50%', transform: 'translateY(-50%)'}",
       }, {
         loader: true,
         animation: 'none',
@@ -616,7 +765,6 @@ const App = new Vue({
            if (!App_this.states.production) {
              console.log(response);
            }
-           dialog.close();
          })
          .catch(function (error) {
            if (!App_this.states.production) {
@@ -631,82 +779,112 @@ const App = new Vue({
     // Method to create a channel
     createChannel: function(e) {
       var App_this = this;
-      var formData = $(e.target).serializeArray();
-      var members = [];
-      Object.keys(formData.filter(data => data.name == 'members')).forEach(function (key) {
-        members.push(formData.filter(data => data.name == 'members')[key].value);
-      });
-
-      var modal = $('#channel-create-modal');
-
-      axios.post('/api/channels', {
-         name: _.find(formData, {'name': 'channel_name'}).value,
-         members: members,
-      })
-       .then(function (response) {
-         if (!App_this.states.production) {
-           console.log(response);
-         }
-         modal.modal('hide');
-         modal.find('form').trigger("reset");
-         App_this.states.current_channel = response.data.channel_id;
-       })
-       .catch(function (error) {
-         if (!App_this.states.production) {
-           console.log(error);
-         }
-      });
+      if (typeof e !== 'undefined') {
+        if (typeof this.states.modal.item !== 'undefined') {
+          this.states.modal.content = {
+            name: '',
+            members: [],
+          };
+          this.modals.create_channel = true;
+        }
+      } else {
+        axios.post('/api/channels', {
+          name: App_this.states.modal.content.name,
+          members: App_this.states.modal.content.members,
+        })
+         .then(function (response) {
+           if (!App_this.states.production) {
+             console.log(response);
+           }
+           App_this.states.current_channel = response.data.channel_id;
+         })
+         .catch(function (error) {
+           if (!App_this.states.production) {
+             console.log(error);
+           }
+        });
+      }
     },
     // Method to edit a channel
     editChannel: function(e) {
       var App_this = this;
-      var formData = $(e.target).serializeArray();
-      var members = [];
-      Object.keys(formData.filter(data => data.name == 'members')).forEach(function (key) {
-        members.push(formData.filter(data => data.name == 'members')[key].value);
-      });
-
-      var modal = $('#channel-edit-modal');
-
-      axios.put('/api/channels/' + this.states.modal.item.channel_id, {
-         name: _.find(formData, {'name': 'channel_name'}).value,
-         members: members,
-      })
-       .then(function (response) {
-         if (!App_this.states.production) {
-           console.log(response);
-         }
-         modal.modal('hide');
-       })
-       .catch(function (error) {
-         if (!App_this.states.production) {
-           console.log(error);
-         }
-      });
+      if (typeof e !== 'undefined') {
+        var members = this.getMembers(e);
+        this.states.modal.item = e;
+        if (typeof this.states.modal.item !== 'undefined') {
+          this.states.modal.content = {
+            name: this.states.modal.item.name,
+            members: _.without(JSON.parse(this.states.modal.item.members), App_this.current_user.id),
+          };
+          this.modals.edit_channel = true;
+        }
+      } else {
+        if (this.states.modal.content.name.trim() !== this.states.modal.item.name || !_.isEqual(App_this.states.modal.content.members.sort(), _.without(JSON.parse(this.states.modal.item.members), function(val) { return val !== App_this.current_user.id; }, App_this.current_user.id).sort())) {
+          axios.put('/api/channels/' + this.states.modal.item.channel_id, {
+             name: App_this.states.modal.content.name,
+             members: App_this.states.modal.content.members,
+          })
+           .then(function (response) {
+             if (!App_this.states.production) {
+               console.log(response);
+             }
+           })
+           .catch(function (error) {
+             if (!App_this.states.production) {
+               console.log(error);
+             }
+          });
+        }
+      }
     },
     // Method to delete channel
     deleteChannel: function(e) {
       var App_this = this;
-      var modal = $('#channel-edit-modal');
 
-      modal.modal('hide');
+      this.modals.edit_channel = false;
 
-      this.$dialog.confirm({
+      this.$Modal.confirm({
         title: 'Delete channel',
-        body: 'Are you sure you want to delete the channel "' + App_this.states.modal.item.name + '"?',
-      }, {
-        loader: true,
-        animation: 'fade',
+        content: 'Are you sure you want to delete the channel "' + App_this.states.modal.item.name + '"?',
+        styles: "{top: '50%', transform: 'translateY(-50%)'}",
       })
-      .then(function (dialog) {
+      .then(function() {
         axios.delete('/api/channels/' + App_this.states.modal.item.channel_id)
          .then(function (response) {
            if (!App_this.states.production) {
              console.log(response);
            }
-           dialog.close();
            _.remove(App_this.messages, function(obj) {
              obj.channel_id == App_this.states.modal.item.channel_id;
+           })
+         })
+         .catch(function (error) {
+           if (!App_this.states.production) {
+             console.log(error);
+           }
+        });
+      })
+      .catch(function () {
+        //
+      });
+    },
+    // Method to allow users to leave channels
+    leaveChannel: function(channel) {
+      var App_this = this;
+
+      this.$Modal.confirm({
+        title: 'Leave channel',
+        content: 'Are you sure you want to leave the channel "' + channel.name + '"?',
+        styles: "{top: '50%', transform: 'translateY(-50%)'}",
+      })
+      .then(function() {
+        axios.put('/api/channels/' + channel.channel_id + '/leave')
+         .then(function (response) {
+           if (!App_this.states.production) {
+             console.log(response);
+           }
+           _.remove(App_this.messages, function(obj) {
+             obj.channel_id == channel.channel_id;
            })
          })
          .catch(function (error) {
@@ -764,17 +942,18 @@ const App = new Vue({
            if (!App_this.states.production) {
              console.log(error);
            }
-           App_this.$dialog.alert({
+           App_this.$Modal.alert({
              title: error.response.data.message,
-             body: Object.values(error.response.data.errors)[0][0],
-           }, {
-             animation: 'none',
+             content: Object.values(error.response.data.errors)[0][0],
              okText: 'Okay',
+             styles: "{top: '50%', transform: 'translateY(-50%)'}",
+             callback: function(action) {
+               //
+             }
            })
-           .then(function (dialog) {
-             //
-           });
         });
+      } else {
+        App_this.states.settings.account_edit = false;
       }
     },
     // Handle avatar change on account edit page
@@ -946,6 +1125,8 @@ const App = new Vue({
            console.log(response);
          }
          App_this.states.modal.item = response.data;
+         App_this.states.modal.item.code = '';
+         App_this.modals.enable_2fa = true;
        })
        .catch(function (error) {
          if (!App_this.states.production) {
@@ -956,73 +1137,85 @@ const App = new Vue({
     // Method to confirm and enable 2fa for current user
     confirm_2fa: function() {
       var App_this = this;
-      var modal = $('#enable-2fa-modal');
-      var verify_code = modal.find("input").val().trim();
-
       axios.post('/2fa/submit', {
-        'verify_code': verify_code,
+        'verify_code': App_this.states.modal.item.code.trim(),
       })
        .then(function (response) {
          if (!App_this.states.production) {
            console.log(response);
          }
-         modal.modal('hide');
-         modal.find("input").val('');
+         App_this.modals.enable_2fa = false;
          Vue.set(App_this.current_user, 'google2fa_secret', response.data.google2fa_secret);
        })
        .catch(function (error) {
          if (!App_this.states.production) {
            console.log(error);
          }
-         modal.find(".form-error").text(error.response.data);
+         App_this.$Modal.alert({
+           title: error.response.data.message,
+           content: Object.values(error.response.data.errors)[0][0],
+           okText: 'Okay',
+           styles: "{top: '50%', transform: 'translateY(-50%)'}",
+           callback: function(action) {
+             //
+           }
+         });
+      })
+      .then(function () {
+        App_this.states.modal.item.code = '';
       });
     },
     // Method to disable 2fa for current user
-    remove_2fa: function() {
+    remove_2fa: function(e) {
       var App_this = this;
-      var modal = $('#remove-2fa-modal');
-      var verify_code = modal.find("input").val().trim();
-
-      axios.post('/2fa/remove', {
-        'verify_code': verify_code,
-      })
-       .then(function (response) {
-         if (!App_this.states.production) {
-           console.log(response);
-         }
-         modal.modal('hide');
-         modal.find("input").val('');
-         Vue.set(App_this.current_user, 'google2fa_secret', response.data.google2fa_secret);
-       })
-       .catch(function (error) {
-         if (!App_this.states.production) {
-           console.log(error);
-         }
-         modal.find(".form-error").text(error.response.data);
-      });
+      if (typeof e !== 'undefined') {
+        this.modals.remove_2fa = true;
+        App_this.states.modal.item = {
+          'code': '',
+        }
+      } else {
+        axios.post('/2fa/remove', {
+          'verify_code': App_this.states.modal.item.code.trim(),
+        })
+         .then(function (response) {
+           if (!App_this.states.production) {
+             console.log(response);
+           }
+           App_this.modals.remove_2fa = false;
+           Vue.set(App_this.current_user, 'google2fa_secret', response.data.google2fa_secret);
+         })
+         .catch(function (error) {
+           if (!App_this.states.production) {
+             console.log(error);
+           }
+           App_this.$Modal.alert({
+             title: error.response.data.message,
+             content: Object.values(error.response.data.errors)[0][0],
+             okText: 'Okay',
+             styles: "{top: '50%', transform: 'translateY(-50%)'}",
+             callback: function(action) {
+               //
+             }
+           });
+        })
+        .then(function () {
+          App_this.states.modal.item.code = '';
+        });
+      }
     },
     // Method to change a user option
-    changeOption: function(e) {
+    changeOption: function(option) {
       var App_this = this;
-      var options = this.user_options;
-      var option = $(e.target).attr('name');
-      if ($(e.target).attr('type') == 'checkbox') {
-        var value = $(e.target)[0].checked;
-      } else {
-        var value = $(e.target).val();
-      }
-
-      options[option] = value;
-      options = JSON.stringify(options);
+      Vue.set(App_this.states.settings.options, option, !App_this.states.settings.options[option]);
 
       axios.post('/api/users/' + App_this.current_user.id, {
-        'options': options,
+        'options': JSON.stringify(App_this.states.settings.options),
       })
        .then(function (response) {
          if (!App_this.states.production) {
            console.log(response);
          }
-         App_this.current_user.options = options;
+         App_this.current_user.options = response.data.options;
        })
        .catch(function (error) {
          if (!App_this.states.production) {
@@ -1040,11 +1233,563 @@ const App = new Vue({
       var App_this = this;
       this.states.settings.active_tab = this.getSetting(e);
     },
+    openCall: function(e) {
+      var App_this = this;
+    },
+    // Method to initiate a voice call
+    startCall: function(data) {
+      var App_this = this;
+      var peer = this.findUser(this.states.voice.peer_id);
+      if (typeof peer == 'undefined') {
+        this.$Message.error('Invalid user!');
+        return;
+      }
+
+      if (peer.status == 'offline') {
+        this.$Message.error('That user is offline!');
+        return;
+      }
+
+      App_this.states.voice.peer_id = peer.id;
+
+      var SimplePeer = require('simple-peer');
+      // get video/voice stream
+      navigator.getUserMedia({ audio: true }, gotMedia, function () {});
+
+      function gotMedia(stream) {
+        App_this.states.voice.initiated = typeof data == 'undefined';
+        p = new SimplePeer({
+          initiator: App_this.states.voice.initiated,
+          stream: stream,
+          constraints: {
+            OfferToReceiveVideo: true,
+          },
+          trickle: false,
+          config: {
+            iceServers: ICE_SERVERS,
+          }
+        });
+
+        p.on('error', function(err) {
+          if (!App_this.states.production) {
+            console.log('Error: ', err);
+          }
+        });
+
+        p.on('close', function() {
+          App_this.$Notify({
+            title: 'Voice disconnected',
+            message: 'Voice chat with ' + App_this.findUser(App_this.states.voice.peer_id).username + ' has been ended.',
+            duration: 5000,
+            type: 'info',
+            showClose: false
+          });
+          App_this.endCall();
+        });
+
+        if (App_this.states.voice.initiated) {
+          App_this.modals.messages.calling = App_this.$Message.loading({
+            message: 'Calling ' + App_this.findUser(App_this.states.voice.peer_id).username,
+            duration: 0,
+          });
+        }
+
+        p.on('connect', function() {
+          App_this.states.voice.connected = true;
+          App_this.$Notify({
+            title: 'Voice connected',
+            message: 'Connected to voice chat with ' + App_this.findUser(App_this.states.voice.peer_id).username,
+            duration: 5000,
+            type: 'success',
+            showClose: false
+          });
+          if (App_this.states.voice.initiated) {
+            App_this.modals.messages.calling();
+          }
+
+          App_this.states.voice.localStream = stream;
+          console.log(p);
+
+          $('#mute-self').click(function(e) {
+            console.log(stream.getTracks()[0]);
+            stream.getTracks()[0].enabled = !stream.getTracks()[0].enabled;
+          });
+
+          var vad_options = {
+            minNoiseLevel: 0.1,
+            minCaptureFreq: 40,
+            avgNoiseMultiplier: 1.5,
+          }
+
+          window.AudioContext = window.AudioContext || window.webkitAudioContext;
+          var audioContext_local = new AudioContext();
+          var vad_local = require('voice-activity-detection');
+          var options_local = {
+            ...vad_options,
+            onVoiceStart: function() {
+              App_this.states.voice.localStats.active = true;
+            },
+            onVoiceStop: function() {
+              App_this.states.voice.localStats.active = false;
+            },
+            onUpdate: function(val) {
+              App_this.states.voice.localStats.level = val;
+            }
+          };
+          vad_local(audioContext_local, stream, options_local);
+
+          window.AudioContext = window.AudioContext || window.webkitAudioContext;
+          var audioContext_remote = new AudioContext();
+          var vad_remote = require('voice-activity-detection');
+          var options_remote = {
+            ...vad_options,
+            onVoiceStart: function() {
+              App_this.states.voice.remoteStats.active = true;
+            },
+            onVoiceStop: function() {
+              App_this.states.voice.remoteStats.active = false;
+            },
+            onUpdate: function(val) {
+              App_this.states.voice.remoteStats.level = val;
+            }
+          };
+          var peer_stream = p._remoteStreams[0];
+          vad_remote(audioContext_remote, peer_stream, options_remote);
+
+          get_stats = window.setInterval(() => {
+            p._pc.getSenders()[0].getStats().then(res => {
+              res.forEach(report => {
+                if (report.type === 'outbound-rtp') {
+                  if (report.isRemote) {
+                    return;
+                  }
+
+                  App_this.states.voice.localStats.bytesSent = report.bytesSent;
+                  App_this.states.voice.localStats.packetsSent = report.packetsSent;
+                }
+              });
+            });
+            p._pc.getReceivers()[0].getStats().then(res => {
+              res.forEach(report => {
+                if (report.type === 'outbound-rtp') {
+                  if (report.isRemote) {
+                    return;
+                  }
+
+                  App_this.states.voice.remoteStats.bytesSent = report.bytesSent;
+                  App_this.states.voice.remoteStats.packetsSent = report.packetsSent;
+                }
+              });
+            });
+          }, 3000);
+        });
+
+        p.on('signal', function(data) {
+          if (data.type == 'offer') {
+            window['channel_'+App_this.states.current_channel.toString()].whisper('client-signal-' + App_this.states.voice.peer_id, {
+              user_id: App_this.current_user.id,
+              data: data,
+            });
+            App_this.states.voice.offer = JSON.stringify(data);
+          }
+          if (data.type == 'answer') {
+            App_this.states.voice.answer = JSON.stringify(data);
+            if (!App_this.states.voice.initiated) {
+              window['channel_'+App_this.states.current_channel.toString()].whisper('client-signal-' + App_this.states.voice.peer_id, {
+                user_id: App_this.current_user.id,
+                data: data,
+              });
+            }
+          }
+          console.log('SIGNAL - '+JSON.stringify(data));
+        });
+
+        p.on('stream', function(peer_stream) {
+          var call = document.querySelector('#voice_call');
+          call.srcObject = peer_stream;
+          call.play();
+        });
+
+        if (!App_this.states.voice.initiated) {
+          p.signal(data);
+        }
+      }
+    },
+    endCall: function(e) {
+      if (typeof p !== 'undefined') {
+        p.destroy();
+        this.states.voice.connected = false;
+        if (typeof this.modals.messages.calling == 'function') {
+          this.modals.messages.calling();
+        }
+        clearInterval(get_stats);
+      }
+    },
+    muteCall: function(e) {
+      document.querySelector('#voice_call').muted = !document.querySelector('#voice_call').muted;
+    },
+    muteMicrophone: function(e) {
+      this.states.voice.localStream.active = !this.states.voice.localStream.active;
+    },
+    acceptCall: function(e) {
+      console.log('ACCEPT');
+      this.modals.incoming_call = false;
+      document.getElementById('incoming_call').pause();
+      document.getElementById('incoming_call').currentTime = 0;
+      this.startCall(this.states.voice.offer);
+    },
+    declineCall: function(e) {
+      var App_this = this;
+      console.log('DECLINE');
+      this.modals.incoming_call = false;
+      document.getElementById('incoming_call').pause();
+      document.getElementById('incoming_call').currentTime = 0;
+      window['channel_'+App_this.states.current_channel.toString()].whisper('client-signal-' + App_this.states.voice.peer_id, {
+        user_id: App_this.current_user.id,
+        data: 'decline',
+      });
+    },
+    joinVoiceChannel: function(channel_id) {
+      var App_this = this;
+      var SimplePeer = require('simple-peer');
+
+      App_this.states.voice.channel_id = channel_id;
+
+      // get video/voice stream
+      navigator.getUserMedia({ audio: true }, gotMedia, function () {});
+
+      function gotMedia(stream) {
+        window['channel_' + channel_id.toString() + '_voice'] = Echo.join('voice.' + channel_id)
+        .here((users) => {
+          users.forEach(function(user, index) {
+            if (!_.has(peers, user.id) && App_this.current_user.id !== user.id) {
+              var peer = new SimplePeer({
+                initiator: true,
+                stream: stream,
+                constraints: {
+                  OfferToReceiveVideo: true,
+                },
+                trickle: false,
+                config: {
+                  iceServers: ICE_SERVERS,
+                }
+              });
+
+              peers[user.id] = peer;
+              App_this.states.voice.peers.push({
+                'user_id': user.id,
+                'offer': null,
+                'answer': null,
+                'stream': null,
+                'volume': null,
+              });
+
+              App_this.modals.messages.calling = App_this.$Message.loading({
+                message: 'Connecting',
+                duration: 0,
+              });
+
+              peer.on('error', function(err) {
+                if (!App_this.states.production) {
+                  console.log('Error: ', err);
+                }
+              });
+
+              peer.on('close', function() {
+                App_this.$Notify({
+                  title: 'Voice disconnected',
+                  message: 'Left voice channel '+App_this.findChannel(App_this.states.voice.channel_id).name,
+                  duration: 5000,
+                  type: 'info',
+                  showClose: false
+                });
+                App_this.leaveVoiceChannel();
+              });
+
+              peer.on('connect', function() {
+                App_this.states.voice.connected = true;
+                App_this.$Notify({
+                  title: 'Voice connected',
+                  message: 'Connected to voice chat',
+                  duration: 5000,
+                  type: 'success',
+                  showClose: false
+                });
+                App_this.modals.messages.calling();
+
+                App_this.states.voice.localStream = stream;
+
+                $('#mute-self').click(function(e) {
+                  console.log(stream.getTracks()[0]);
+                  stream.getTracks()[0].enabled = !stream.getTracks()[0].enabled;
+                });
+
+                var vad_options = {
+                  minNoiseLevel: 0.1,
+                  minCaptureFreq: 40,
+                  avgNoiseMultiplier: 1.5,
+                }
+
+                window.AudioContext = window.AudioContext || window.webkitAudioContext;
+                var audioContext_local = new AudioContext();
+                var vad_local = require('voice-activity-detection');
+                var options_local = {
+                  ...vad_options,
+                  onVoiceStart: function() {
+                    App_this.states.voice.localStats.active = true;
+                  },
+                  onVoiceStop: function() {
+                    App_this.states.voice.localStats.active = false;
+                  },
+                  onUpdate: function(val) {
+                    App_this.states.voice.localStats.level = val;
+                  }
+                };
+                vad_local(audioContext_local, stream, options_local);
+
+                get_stats = window.setInterval(() => {
+                  if (_.has(peers, user.id)) {
+                    peers[user.id]._pc.getSenders()[0].getStats().then(res => {
+                      res.forEach(report => {
+                        if (report.type === 'outbound-rtp') {
+                          if (report.isRemote) {
+                            return;
+                          }
+
+                          App_this.states.voice.localStats.bytesSent = report.bytesSent;
+                          App_this.states.voice.localStats.packetsSent = report.packetsSent;
+                        }
+                      });
+                    });
+                  }
+                }, 3000);
+              });
+
+              peer.on('signal', function(data) {
+                if (data.type == 'offer') {
+                  window['channel_'+App_this.states.voice.channel_id.toString() + '_voice'].whisper('client-signal-' + user.id, {
+                    user_id: App_this.current_user.id,
+                    peer_id: user.id,
+                    data: data,
+                  });
+                  if (typeof App_this.states.voice.peers[user.id] !== 'undefined') {
+                    Vue.set(App_this.states.voice.peers[user.id], 'offer', JSON.stringify(data));
+                  }
+                }
+                if (data.type == 'answer') {
+                  if (typeof App_this.states.voice.peers[user.id] !== 'undefined') {
+                    Vue.set(App_this.states.voice.peers[user.id], 'answer', JSON.stringify(data));
+                  }
+                  if (!App_this.states.voice.initiated) {
+                    window['channel_'+App_this.states.voice.channel_id.toString() + '_voice'].whisper('client-signal-' + user.id, {
+                      user_id: App_this.current_user.id,
+                      peer_id: user.id,
+                      data: data,
+                    });
+                  }
+                }
+                console.log('SIGNAL - '+JSON.stringify(data));
+              });
+
+              peer.on('stream', function(peer_stream) {
+                var call = document.querySelector('#voice_channel_user-' + user.id);
+                call.srcObject = peer_stream;
+                call.play();
+              });
+
+              if (App_this.current_user.id == user.id) {
+                peer.signal(data);
+              }
+            }
+          });
+        })
+        .joining((user) => {
+          App_this.states.voice.peers.push({
+            'user_id': user.id,
+            'offer': null,
+            'answer': null,
+            'stream': null,
+            'volume': null,
+          });
+
+          if (!_.has(peers, user.id) && App_this.current_user.id !== user.id) {
+            var peer = new SimplePeer({
+              initiator: false,
+              stream: stream,
+              constraints: {
+                OfferToReceiveVideo: true,
+              },
+              trickle: false,
+              config: {
+                iceServers: ICE_SERVERS,
+              }
+            });
+
+            peers[user.id] = peer;
+
+            App_this.modals.messages.calling = App_this.$Message.loading({
+              message: 'Connecting',
+              duration: 0,
+            });
+
+            peer.on('error', function(err) {
+              if (!App_this.states.production) {
+                console.log('Error: ', err);
+              }
+            });
+
+            peer.on('close', function() {
+              App_this.$Notify({
+                title: 'Voice disconnected',
+                message: 'Left voice channel '+App_this.findChannel(App_this.states.voice.channel_id).name,
+                duration: 5000,
+                type: 'info',
+                showClose: false
+              });
+              App_this.leaveVoiceChannel();
+            });
+
+            peer.on('connect', function() {
+              App_this.states.voice.connected = true;
+              App_this.$Notify({
+                title: 'Voice connected',
+                message: 'Connected to voice chat',
+                duration: 5000,
+                type: 'success',
+                showClose: false
+              });
+              App_this.modals.messages.calling();
+
+              App_this.states.voice.localStream = stream;
+
+              $('#mute-self').click(function(e) {
+                console.log(stream.getTracks()[0]);
+                stream.getTracks()[0].enabled = !stream.getTracks()[0].enabled;
+              });
+
+              var vad_options = {
+                minNoiseLevel: 0.1,
+                minCaptureFreq: 40,
+                avgNoiseMultiplier: 1.5,
+              }
+
+              window.AudioContext = window.AudioContext || window.webkitAudioContext;
+              var audioContext_local = new AudioContext();
+              var vad_local = require('voice-activity-detection');
+              var options_local = {
+                ...vad_options,
+                onVoiceStart: function() {
+                  App_this.states.voice.localStats.active = true;
+                },
+                onVoiceStop: function() {
+                  App_this.states.voice.localStats.active = false;
+                },
+                onUpdate: function(val) {
+                  App_this.states.voice.localStats.level = val;
+                }
+              };
+              vad_local(audioContext_local, stream, options_local);
+
+              get_stats = window.setInterval(() => {
+                if (_.has(peers, user.id)) {
+                  peers[user.id]._pc.getSenders()[0].getStats().then(res => {
+                    res.forEach(report => {
+                      if (report.type === 'outbound-rtp') {
+                        if (report.isRemote) {
+                          return;
+                        }
+
+                        App_this.states.voice.localStats.bytesSent = report.bytesSent;
+                        App_this.states.voice.localStats.packetsSent = report.packetsSent;
+                      }
+                    });
+                  });
+                }
+              }, 3000);
+            });
+
+            peer.on('signal', function(data) {
+              if (data.type == 'offer') {
+                window['channel_'+App_this.states.voice.channel_id.toString() + '_voice'].whisper('client-signal-' + user.id, {
+                  user_id: App_this.current_user.id,
+                  peer_id: user.id,
+                  data: data,
+                });
+                if (typeof App_this.states.voice.peers[user.id] !== 'undefined') {
+                  Vue.set(App_this.states.voice.peers[user.id], 'offer', JSON.stringify(data));
+                }
+              }
+              if (data.type == 'answer') {
+                if (typeof App_this.states.voice.peers[user.id] !== 'undefined') {
+                  Vue.set(App_this.states.voice.peers[user.id], 'answer', JSON.stringify(data));
+                }
+                if (!App_this.states.voice.initiated) {
+                  window['channel_'+App_this.states.voice.channel_id.toString() + '_voice'].whisper('client-signal-' + user.id, {
+                    user_id: App_this.current_user.id,
+                    peer_id: user.id,
+                    data: data,
+                  });
+                }
+              }
+              console.log('SIGNAL - '+JSON.stringify(data));
+            });
+
+            peer.on('stream', function(peer_stream) {
+              var call = document.querySelector('#voice_channel_user-' + user.id);
+              call.srcObject = peer_stream;
+              call.play();
+            });
+
+            if (App_this.current_user.id == user.id) {
+              peer.signal(data);
+            }
+          }
+        })
+        .leaving((user) => {
+          App_this.states.voice.peers.splice(App_this.states.voice.peers.findIndex(u => u.user_id == user.id), 1);
+        });
+
+        window['channel_' + App_this.states.voice.channel_id.toString() + '_voice']
+        .listenForWhisper('client-signal-' + App_this.current_user.id, (e) => {
+          if (!App_this.states.production) {
+            console.log(e);
+          }
+
+          if (e.peer_id == App_this.current_user.id) {
+            if (e.data.type == 'offer') {
+              App_this.states.voice.peers[App_this.states.voice.peers.findIndex(u => u.user_id == e.user_id)].offer = e.data;
+              if (typeof peers[e.user_id] !== 'undefined') {
+                peers[e.user_id].signal(e.data);
+              }
+            } else if (e.data.type == 'answer') {
+              App_this.states.voice.peers[App_this.states.voice.peers.findIndex(u => u.user_id == e.user_id)].answer = e.data;
+              if (typeof peers[e.user_id] !== 'undefined') {
+                peers[e.user_id].signal(e.data);
+              }
+            }
+          }
+        });
+      }
+    },
+    leaveVoiceChannel: function(channel_id) {
+      var App_this = this;
+
+      Echo.leave('voice.' + channel_id);
+      console.log(peers);
+      _.each(peers, function(peer) {
+        peer.destroy();
+        App_this.states.voice.connected = false;
+        if (typeof App_this.modals.messages.calling == 'function') {
+          App_this.modals.messages.calling();
+        }
+        clearInterval(get_stats);
+      });
+    },
   },
 });
 
 // Automatically resize text areas to fit text height
-autosize($('textarea'));
+//autosize($('textarea'));
 
 // Detect if browser is offline
 isOnline().then(online => {
@@ -1102,6 +1847,14 @@ function listenToChannel(channel_id) {
             }
           }
           App.messages.push(e.message);
+          if (App.current_user.id !== e.message.user_id) {
+            App.$Notify({
+              title: App.findUser(e.message.user_id).username + ' (Channel: ' + App.findChannel(e.message.channel_id).name + ')',
+              message: e.message.content,
+              duration: 6000,
+              showClose: false
+            });
+          }
           // Play sound if user has message_sounds set to true
           if (App.user_options.message_sounds && App.current_user.id !== e.message.user_id) {
             document.getElementById('message_sound').play();
@@ -1222,17 +1975,20 @@ if (App.logged_in && document.getElementById('messages')) {
           console.log(e.user);
         }
         Vue.set(App.users, App.users.findIndex((user_find => user_find.id == e.user.id)), e.user);
-        var src = $(".avatar[data-user_id='" + e.user.id + "']").attr('src');
-        if (src && src.indexOf('?') > 0) {
-          src = src.substring(0, src.indexOf('?')) + '?' + Date.now();
-        } else {
-          src = src + '?' + Date.now();
-        }
-        $(".avatar[data-user_id='" + e.user.id + "']").attr('src', src);
-        if (e.user.id == App.current_user.id) {
-          App.current_user.status = e.user.status;
-          App.current_user.username = e.user.username;
-          App.states.account.avatar = src;
+        var src = $("[data-user_id='" + e.user.id + "']").attr('src');
+        if (src) {
+          if (src.indexOf('?') > 0) {
+            src = src.substring(0, src.indexOf('?')) + '?' + Date.now();
+          } else {
+            src = src + '?' + Date.now();
+          }
+
+          $("[data-user_id='" + e.user.id + "']").attr('src', src);
+          if (e.user.id == App.current_user.id) {
+            App.current_user.status = e.user.status;
+            App.current_user.username = e.user.username;
+            App.states.account.avatar = src;
+          }
         }
      });
 
@@ -1284,6 +2040,36 @@ if (App.logged_in && document.getElementById('messages')) {
        // Join private channel through Laravel Echo
        listenToChannel(App.channels[key].channel_id);
      });
+
+     if (typeof window['channel_' + App.states.current_channel.toString()] !== 'undefined') {
+       window['channel_' + App.states.current_channel.toString()]
+       .listenForWhisper('client-signal-' + App.current_user.id, (e) => {
+         if (!App.states.production) {
+           console.log(e);
+         }
+
+         if (e.data == 'decline') {
+           p.destroy();
+           App.$Message.info('Your call was declined');
+           App.modals.messages.calling();
+           return;
+         }
+
+         if (e.data.type == 'offer') {
+           App.states.voice.offer = JSON.stringify(e.data);
+           App.states.voice.peer_id = e.user_id;
+           App.states.voice.initiated = false;
+
+           document.getElementById('incoming_call').play();
+
+           App.modals.incoming_call = true;
+         } else if (e.data.type == 'answer') {
+           if (typeof p !== 'undefined') {
+             p.signal(e.data);
+           }
+         }
+       });
+     }
 }
 
 // Listen to key events on window
@@ -1293,10 +2079,14 @@ window.addEventListener('keydown', function(e) {
   if (e.keyCode === 27) {
     App.states.settings.display = false;
   }
+  // If message textarea is focused
+  if (App.states.typing.focused) {
+    App.startTyping(e);
+  }
 });
 
 // Initialise Bootstrap tooltips
-$("body").tooltip({
+$(document.body).tooltip({
     selector: '[data-toggle="tooltip"]'
 });
 
@@ -1317,6 +2107,11 @@ $(document).on("click", '[data-toggle="popover"]', function(e) {
 // Ensure tooltips are closed when the toggle element is clicked
 $(document).on("mouseleave click", '[data-toggle="tooltip"]', function(e) {
   $(".tooltip").tooltip("hide");
+});
+
+// Fix positioning for some tooltips with data-offset-tooltip
+$(document).on("mouseenter", '[data-toggle="tooltip"]', function(e) {
+  $(".tooltip").css('left', $(this).data('offset-tooltip'));
 });
 
 // Allow floating labels on input boxes
