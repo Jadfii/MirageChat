@@ -19,16 +19,41 @@
       <div class="content">
         <p v-if="message.content.length > 0" :class="{ 'text-light': dark_mode }">{{ message.content }}</p>
         <at-card v-if="hasFile()" :body-style="{ 'padding': '14px' }" :class="[ dark_mode ? 'bg-darker':'bg-alt', { 'border-darkest': dark_mode } ]" class="mt-2" :no-hover="true">
-          <div class="flex flex-row align-items-center">
-            <img height="40px" :src="file_icon">
-            <div class="flex flex-column ml-4">
+          <div v-if="getFileType() == 'video'" class="flex flex-row align-items-center">
+            <video style="max-width: 20vw;" controls>
+              <source :src="'/files/messages/' + message.message_id" :type="getFiles()[0].type">
+            </video>
+            <div class="flex flex-column align-self-start ml-3">
               <h4 :class="{ 'text-light': dark_mode }">{{ getFiles()[0].name }}</h4>
               <p :class="{ 'text-light': dark_mode }">{{ format_bytes(getFiles()[0].size) }}</p>
             </div>
-            <a :href="'/download/messages/' + message.message_id" target="_blank" :class="[ dark_mode ? 'text-light':'text-dark' ]" class="ml-auto"><i style="font-size: 1.25rem;" class="hover icon icon-download"></i></a>
+          </div>
+          <div v-else-if="getFileType() == 'audio'" class="flex flex-row align-items-center">
+            <audio controls>
+              <source :src="'/files/messages/' + message.message_id" :type="getFiles()[0].type">
+            </audio>
+            <div class="flex flex-column align-self-start ml-3">
+              <h4 :class="{ 'text-light': dark_mode }">{{ getFiles()[0].name }}</h4>
+              <p :class="{ 'text-light': dark_mode }">{{ format_bytes(getFiles()[0].size) }}</p>
+            </div>
+          </div>
+          <div v-else-if="getFileType() == 'image'" class="flex flex-row align-items-center">
+            <a :href="'/files/messages/' + message.message_id" target="_blank" rel="noopener noreferrer"><img :src="'/files/messages/' + message.message_id" style="max-width: 20vw;" class="rounded mt-1"></img></a>
+            <div class="flex flex-column align-self-start ml-3">
+              <h4 :class="{ 'text-light': dark_mode }">{{ getFiles()[0].name }}</h4>
+              <p :class="{ 'text-light': dark_mode }">{{ format_bytes(getFiles()[0].size) }}</p>
+            </div>
+          </div>
+          <div v-else class="flex flex-row align-items-center">
+            <img height="40px" :src="file_icon">
+            <div class="flex flex-column ml-3">
+              <h4 :class="{ 'text-light': dark_mode }">{{ getFiles()[0].name }}</h4>
+              <p :class="{ 'text-light': dark_mode }">{{ format_bytes(getFiles()[0].size) }}</p>
+            </div>
+            <a :href="'/files/messages/' + message.message_id + '/download'" target="_blank" :class="[ dark_mode ? 'text-light':'text-dark' ]" class="ml-auto"><i style="font-size: 1.25rem;" class="hover icon icon-download"></i></a>
           </div>
         </at-card>
-        <a v-if="hasImageURL()" v-for="(URL, index) in getURLs()" v-bind:href="URL" target="_blank" rel="noopener noreferrer"><img style="max-width: 30vw;" v-bind:src="URL" class="rounded mt-1"></img></a>
+        <a v-if="hasImageURL()" v-for="(URL, index) in getURLs()" v-bind:href="URL" target="_blank" rel="noopener noreferrer"><img style="max-width: 20vw;" v-bind:src="URL" class="rounded mt-1"></img></a>
       </div>
     </div>
     <div class="align-self-start ml-auto">
@@ -104,6 +129,11 @@
                 }
               }
             }
+            if (App_this.scrolled_bottom && this.hasFile()) {
+              $("[data-message_id='" + App_this.message.message_id + "']").find("video").on("loadeddata", function() {
+                $('#messages').scrollTop(1E10);
+              });
+            }
             if (App_this.scrolled_bottom) {
               $('#messages').scrollTop(1E10);
             }
@@ -144,6 +174,10 @@
           getFiles: function() {
             var App_this = this;
             return JSON.parse(App_this.message.files);
+          },
+          getFileType: function() {
+            var type = JSON.parse(this.message.files)[0].type;
+            return type.substr(0, type.indexOf('/'));
           },
         },
         props: {

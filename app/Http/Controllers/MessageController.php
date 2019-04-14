@@ -20,7 +20,7 @@ class MessageController extends Controller
    */
   public function __construct(Request $request)
   {
-      $this->middleware('auth:api', ['except' => ['download']]);
+      $this->middleware('auth:api', ['except' => ['download', 'embed']]);
       $this->middleware('message.auth:view', ['except' => ['index', 'store']]);
       $this->middleware('message.auth:edit', ['only' => ['update', 'delete']]);
       $this->middleware('channel.auth:view', ['only' => ['store']]);
@@ -132,6 +132,8 @@ class MessageController extends Controller
          $files[] = array(
           'name' => $file->getClientOriginalName(),
           'size' => $file->getSize(),
+          'type' => $file->getMimeType(),
+          'extension' => $file->extension(),
           'path' => $path,
         );
        } else {
@@ -208,6 +210,20 @@ class MessageController extends Controller
   }
 
   /**
+  * Show (embed) files attached to message
+  *
+  * @param Request $request
+  * @param Message $message
+  * @return Response
+  */
+  public static function embed(Request $request, Message $message)
+  {
+      $response = \Response::make(Storage::get(json_decode($message->files)[0]->path), 200);
+      $response->header('Content-Type', json_decode($message->files)[0]->type);
+      return $response;
+  }
+
+  /**
   * Download file(s) attached to message
   *
   * @param Request $request
@@ -216,7 +232,7 @@ class MessageController extends Controller
   */
   public static function download(Request $request, Message $message)
   {
-      return response()->download(storage_path('app/').json_decode($message->files)[0]->path, json_decode($message->files)[0]->name);
+      return Storage::download(json_decode($message->files)[0]->path, json_decode($message->files)[0]->name);
   }
 
   /**

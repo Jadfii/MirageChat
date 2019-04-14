@@ -196,7 +196,7 @@
                 <div v-if="has(states.modal.item, 'file_name')" class="flex flex-column align-items-center justify-content-center p-4">
                     <div class="flex flex-row align-items-center align-self-start">
                         <img height="100px" src="{{ asset('icons/upload_file.svg') }}">
-                        <h1 class="mt-3 ml-3">@{{ states.modal.item.file_name }}</h1>
+                        <h1 class="mt-3 ml-3" style="word-break: break-all;">@{{ states.modal.item.file_name }}</h1>
                     </div>
                     <div class="flex flex-column justify-content-center w-100 mt-5">
                         <h6 class="text-uppercase font-weight-bold">Add message (optional)</h6>

@@ -278,8 +278,12 @@ const App = new Vue({
     window.axios.defaults.params['api_token'] = this.current_user.api_token;
 
     var App_this = this;
+    var scroll_bottom = setInterval(function() {
+      $('#messages').scrollTop(1E10);
+    }, 200);
     _.delay(function() {
       App_this.states.loaded = true;
+      clearInterval(scroll_bottom);
     }, 5000);
 
     this.states.settings.options = this.user_options;
@@ -534,7 +538,7 @@ const App = new Vue({
 
       const k = 1024;
       const dm = decimals < 0 ? 0 : decimals;
-      const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+      const sizes = ['bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
 
       const i = Math.floor(Math.log(bytes) / Math.log(k));
 
