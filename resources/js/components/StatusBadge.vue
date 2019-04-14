@@ -10,6 +10,7 @@
     data-placement="top"
     :title="status_format"
     :data-original-title="status_format"
+    :data-offset-tooltip="offset"
     ></sup>
   </span>
 </template>
@@ -32,6 +33,7 @@
             default: 'light',
             type: String,
           },
+          offset: [String],
         },
     }
 </script>

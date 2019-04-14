@@ -39,6 +39,7 @@ Route::prefix('channels')->group(function () {
 
     Route::put('{channel}', 'ChannelController@update');
     Route::put('{channel}/read', 'ChannelController@read');
+    Route::put('{channel}/leave', 'ChannelController@leave');
 
     Route::get('/', 'ChannelController@index');
     Route::get('{channel}', 'ChannelController@show');

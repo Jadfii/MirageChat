@@ -7,7 +7,10 @@ $font-size-base: 0.9rem;
 $line-height-base: 1.6;
 
 // Colors
+$body: #3F536E;
 $primary: #6190E8;
+
+$danger: #ff4949;
 
 $blue: #3490dc;
 $indigo: #6574cd;
@@ -26,8 +29,10 @@ $offline: #747f8d;
 $idle: #ffc82c;
 
 $light: #fff;
+$light-alt: #f5f6f8;
 $dark: #1B2A3F;
 $darker: #101C2E;
+$darkest: darken($darker, 3%);
 
 $dark-bg--primary: #343a40;
 $light-bg--primary: #fff;

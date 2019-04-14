@@ -55,7 +55,7 @@
                       @yield('content')
                     </div>
                   </div>
-                  <div class="col col-alt col-md-12 d-none d-md-none d-sm-none d-lg-flex flex justify-content-center align-items-center">
+                  <div class="col col-alt bg-alt col-md-12 d-none d-md-none d-sm-none d-lg-flex flex justify-content-center align-items-center">
                     @yield('illustration')
                   </div>
                 </div>
@@ -66,25 +66,73 @@
                 <source src="{{ asset('sounds/light.mp3') }}"></source>
             </audio>
 
+            <audio id="voice_call" :volume="states.voice.volume / 100">
+                <source src=""></source>
+            </audio>
+
+            <audio v-for="(peer, index) in states.voice.peers" :id="'voice_channel_user-' + peer.user_id" :volume="peer.volume / 100">
+                <source src=""></source>
+            </audio>
+
+            <audio id="incoming_call" loop>
+                <source src="{{ asset('sounds/incoming.mp3') }}"></source>
+            </audio>
+
+            <transition name="fade">
+                <div v-show="!states.loaded && false" :class="[ user_options.dark_mode ? 'bg-darker' : 'bg-alt' ]" class="w-100 h-100 position-fixed flex flex-column align-items-center justify-content-center" style="z-index: 99; top: 0; left: 0; right: 0; left: 0;">
+                    <div :class="{ 'dark': user_options.dark_mode }" class="loader triangle">
+                        <svg viewBox="0 0 86 80">
+                            <polygon points="43 8 79 72 7 72"></polygon>
+                        </svg>
+                    </div>
+                    <h1 :class="{ 'text-white': user_options.dark_mode }" class="font-weight-light mt-2" style="font-size: 2rem;">MirageChat</h1>
+                    <p :class="{ 'text-light': user_options.dark_mode }">Loading</p>
+                </div>
+            </transition>
+
             <form id="logout-form" action="{{ route('logout') }}" method="POST" style="display: none;">
                 @csrf
             </form>
 
+            <at-modal v-model="modals.incoming_call" title="Incoming call" ok-text="Answer" cancel-text="Decline" :mask-closable="false" :show-close="false">
+                <div v-if="states.voice.peer_id" class="flex flex-row align-items-center">
+                    <img height="70px" :class="{ 'avatar--active': states.voice.remoteStats.level > 0.2 }" class="avatar rounded-circle mx-1" :src="'{{ asset('storage/avatars') }}/' + states.voice.peer_id + '.png'" :data-user_id="states.voice.peer_id">
+                    <h4>@{{ findUser(states.voice.peer_id).username + ' is calling you' }}</h4>
+                </div>
+                <div slot="footer">
+                  <at-button type="error" @click="declineCall">Decline</at-button>
+                  <at-button type="success" @click="acceptCall">Accept</at-button>
+                </div>
+            </at-modal>
+
+            <at-modal v-model="modals.voice_call" title="Voice call">
+                <div>
+                    <at-button @click="startCall()" type="success">Start call</at-button>
+                    <at-button @click="endCall" type="error">End call</at-button>
+                    <at-button @click="muteCall" type="info">Mute call</at-button>
+                    <at-button type="info" id="mute-self">Mute microphone</at-button>
+                    <at-slider v-model="states.voice.volume"></at-slider>
+                    <at-select placeholder="Peer" v-model="states.voice.peer_id" size="large">
+                      <at-option v-for="(user, index) in other_users" :key="user.id" :value="user.id">@{{ user.username }}</at-option>
+                    </at-select>
+                </div>
+            </at-modal>
+
             <at-modal v-model="modals.create_channel" title="Create channel" @on-confirm="createChannel">
-              <at-input size="large" type="text" placeholder="Channel name" v-model="states.modal.content.name" class="my-2"></at-input>
-              <at-select placeholder="Channel members" v-model="states.modal.content.members" multiple size="large">
+              <at-input v-if="has(states.modal.content, 'name')" :class="{ 'darker': user_options.dark_mode }" size="large" type="text" placeholder="Channel name" v-model="states.modal.content.name" class="my-2"></at-input>
+              <at-select v-if="has(states.modal.content, 'members')" placeholder="Channel members" v-model="states.modal.content.members" multiple size="large">
                 <at-option v-for="(user, index) in other_users" :key="user.id" :value="user.id">@{{ user.username }}</at-option>
               </at-select>
             </at-modal>
 
             <at-modal v-model="modals.edit_message" title="Edit message" @on-confirm="editMessage">
                 <div v-if="has(states.modal.item, 'content')">
-                  <at-textarea v-model="states.modal.content" autosize resize="none" max-rows="4"></at-textarea>
+                  <at-textarea v-model="states.modal.content" :class="{ 'darker': user_options.dark_mode }" autosize resize="none" max-rows="4"></at-textarea>
                 </div>
             </at-modal>
 
             <at-modal v-model="modals.edit_channel" title="Edit channel" @on-confirm="editChannel">
-              <at-input v-if="has(states.modal.item, 'name')" size="large" type="text" v-model="states.modal.content.name" class="my-2"></at-input>
+              <at-input v-if="has(states.modal.item, 'name')" :class="{ 'darker': user_options.dark_mode }" size="large" type="text" v-model="states.modal.content.name" class="my-2"></at-input>
               <at-select v-if="has(states.modal.item, 'members')" v-model="states.modal.content.members" multiple size="large">
                 <at-option v-for="(user, index) in other_users" :key="user.id" :value="user.id">@{{ user.username }}</at-option>
               </at-select>
@@ -97,7 +145,42 @@
               </div>
             </at-modal>
 
-            <v-popover
+            <at-modal v-model="modals.enable_2fa" title="Enable 2-Factor Authentication">
+                <div v-if="has(states.modal.item, 'qr_img')">
+                  <div>
+                      <h6 class="text-uppercase font-weight-bold">Scan QR Code</h6>
+                      <img :src="states.modal.item.qr_img"></img>
+                      <p>Or enter this code into your authenticator app manually: @{{ states.modal.item.secret }}</p>
+                  </div>
+                  <div class="mt-2">
+                      <h6 class="text-uppercase font-weight-bold">Enter 6-digit generated code</h6>
+                      <at-input v-model="states.modal.item.code" :class="{ 'darker': user_options.dark_mode }" size="large" type="text" placeholder="Authenticator code" class="my-2" autofocus></at-input>
+                  </div>
+                </div>
+                <div slot="footer" class="flex flex-row align-items-center">
+                    <div class="ml-auto">
+                        <at-button @click.native="modals.enable_2fa = false">Cancel</at-button>
+                        <at-button type="primary" @click.native="confirm_2fa()">OK</at-button>
+                    </div>
+                </div>
+            </at-modal>
+
+            <at-modal v-model="modals.remove_2fa" title="Remove 2-Factor Authentication">
+                <div v-if="has(states.modal.item, 'code')">
+                  <div>
+                      <h6 class="text-uppercase font-weight-bold">Enter 6-digit generated code</h6>
+                      <at-input v-model="states.modal.item.code" :class="{ 'darker': user_options.dark_mode }" size="large" type="text" placeholder="Authenticator code" class="my-2" autofocus></at-input>
+                  </div>
+                </div>
+                <div slot="footer" class="flex flex-row align-items-center">
+                    <div class="ml-auto">
+                        <at-button @click.native="modals.remove_2fa = false">Cancel</at-button>
+                        <at-button type="primary" @click.native="remove_2fa()">OK</at-button>
+                    </div>
+                </div>
+            </at-modal>
+
+            <!--<v-popover
               v-if="states.popover.open"
               :style="tooltip_location"
               :offset="8"
@@ -112,7 +195,7 @@
                     <h5>@{{ states.popover.item.user.username }}</h5>
                 </div>
               </template>
-            </v-popover>
+          </v-popover>-->
 
             <transition name="scale">
                 @yield('settings')
@@ -123,24 +206,27 @@
                     <div class="container-fluid px-0 h-100">
                       <div class="row h-100 w-100 flex-nowrap">
                           <div class="flex flex-column h-100" style="flex: 0 0 auto; flex-basis: 0;">
-                              <div class="flex flex-row align-items-center bg-darker p-3" :style="{ height: window.nav_height + 'px' }">
+                              <div  :class="[ user_options.dark_mode ? 'bg-darkest' : 'bg-darker' ]" class="flex flex-row align-items-center p-3" :style="{ height: window.nav_height + 'px' }">
                                   <status-badge class="border-0" theme="darker" :status="current_user.status">
                                     <img height="30px" class="rounded-circle" src="{{ asset('storage/avatars/'.Auth::user()->id.'.png') }}" data-user_id="{{ Auth::user()->id }}">
                                   </status-badge>
                                   <h4 class="mx-2 text-white">@{{ current_user.username }}</h4>
                                   <div class="ml-auto text-white">
-                                      <a class="mx-1" @click="states.settings.display = true"><i class="icon icon-settings"></i></a>
-                                      <a class="mx-1" onclick="document.getElementById('logout-form').submit()"><i class="icon icon-log-out"></i></a>
+                                      <a class="mx-1" @click="modals.voice_call = true" data-toggle="tooltip" data-placement="top" title="Voice Call"><i class="icon icon-mic"></i></a>
+                                      <a class="mx-1" @click="states.settings.display = true" data-toggle="tooltip" data-placement="top" title="User Settings"><i class="icon icon-settings"></i></a>
                                   </div>
                               </div>
-                              <at-menu theme="dark" class="flex-fill border-0 bg-dark py-4" mode="vertical" :active-name="states.current_channel">
+                              <at-menu width="300px" theme="dark" :class="[ user_options.dark_mode ? 'bg-darker':'bg-dark' ]" class="flex-fill border-0 py-4" mode="vertical" :active-name="states.current_channel">
                                   <h5 class="text-white text-uppercase ls-1 my-2 pl-32">Channels - @{{ channels.length }}</h5>
                                   <at-menu-item v-for="(channel, index) in channels" :key="channel.channel_id" :name="channel.channel_id">
                                       <div @click="states.current_channel = channel.channel_id" class="position-relative flex align-items-center" style="overflow: hidden;">
                                           <i class="icon icon-hash"></i>
                                           @{{ channel.name }}
-                                          <i @click="editChannel(channel)" style="z-index: 2;" class="ml-auto hover icon icon-settings"></i>
-                                          <at-tag v-show="unread[channel.channel_id] > 0" class="ml-auto" color="error">@{{ unread[channel.channel_id] }}</at-tag>
+                                          <i v-if="!states.voice.connected" @click="joinVoiceChannel(channel.channel_id)" style="z-index: 2;" class="ml-auto hover icon icon-mic" data-toggle="tooltip" data-placement="top" data-original-title="Join voice chat"></i>
+                                          <i v-else @click="leaveVoiceChannel(channel.channel_id)" style="z-index: 2;" class="ml-auto hover icon icon-mic-off" data-toggle="tooltip" data-placement="top" data-original-title="Leave voice chat"></i>
+                                          <i v-if="channel.user_id == current_user.id" @click="editChannel(channel)" style="z-index: 2;" class="hover icon icon-settings" data-toggle="tooltip" data-placement="top" title="Edit channel"></i>
+                                          <i v-else @click="leaveChannel(channel)" style="z-index: 2;" class="hover icon icon-user-minus" data-toggle="tooltip" data-placement="top" title="Leave channel"></i>
+                                          <at-tag v-show="unread[channel.channel_id] > 0" color="error">@{{ unread[channel.channel_id] }}</at-tag>
                                       </div>
                                   </at-menu-item>
                                   <li class="at-menu__item">
@@ -151,12 +237,32 @@
                                         </div>
                                     </div>
                                   </li>
+                                  <h5 class="text-white text-uppercase ls-1 my-2 mt-4 pl-32">Voice chat</h5>
+                                  <div class="flex flex-column">
+                                      <div class="" style="padding-left: 32px;">
+                                          <span class="">Voice status: <b>@{{ states.voice.connected ? 'Connected' : 'Disconnected' }}</b></span>
+                                      </div>
+                                      <div v-if="states.voice.connected" class="flex flex-column align-items-start my-2" style="padding-left: 32px;">
+                                          <div class="flex flex-row align-items-center">
+                                              <img height="30px" width="30px" :class="{ 'avatar--active': states.voice.localStats.active }" class="avatar rounded-circle my-1" :src="'{{ asset('storage/avatars') }}/' + current_user.id + '.png'" :data-user_id="current_user.id">
+                                              <span class="ml-2" :style="[states.voice.localStats.active ? { 'text-shadow': '0 0 0.05px white' } : { 'text-shadow': 'none' }]">@{{ current_user.username }}</span>
+                                          </div>
+                                          <div v-for="(peer, index) in states.voice.peers" class="flex flex-row align-items-center">
+                                              <img height="30px" width="30px" class="avatar rounded-circle my-1" :src="'{{ asset('storage/avatars') }}/' + peer.user_id + '.png'" :data-user_id="peer.user_id">
+                                              <span class="ml-2">@{{ findUser(peer.user_id).username }}</span>
+                                          </div>
+                                          <!--<div class="flex flex-row align-items-center">
+                                              <img height="30px" width="30px" :class="{ 'avatar--active': states.voice.remoteStats.active }" class="avatar rounded-circle my-1" :src="'{{ asset('storage/avatars') }}/' + states.voice.peer_id  + '.png'" :data-user_id="states.voice.peer_id">
+                                              <span class="ml-2" :style="[states.voice.remoteStats.active ? { 'text-shadow': '0 0 0.05px white' } : { 'text-shadow': 'none' }]">@{{ findUser(states.voice.peer_id).username }}</span>
+                                          </div>-->
+                                      </div>
+                                  </div>
                               </at-menu>
                           </div>
-                          <div class="flex flex-column flex-grow-1" style="flex: 0 0 auto; flex-basis: 0;">
-                              <div class="border-bottom" :style="{ height: window.nav_height + 'px' }">
+                          <div :class="{ 'bg-dark': user_options.dark_mode }" class="flex flex-column flex-grow-1" style="flex: 0 0 auto; flex-basis: 0;">
+                              <div class="border-bottom" :class="[ user_options.dark_mode ? 'border-darker' : 'border-light' ]" :style="{ height: window.nav_height + 'px' }">
                                   <div class="flex align-items-center w-100 h-100">
-                                      <h4 class="mx-4">@{{ active_channel.name }}</h4>
+                                      <h4 :class="{ 'text-white': user_options.dark_mode }" class="mx-4">@{{ active_channel ? active_channel.name: '' }}</h4>
                                   </div>
                               </div>
                               <div class="flex-fill position-relative">
@@ -164,12 +270,12 @@
                               </div>
                           </div>
                           <div class="flex flex-column mr-auto h-100" style="flex: 0 0 auto; flex-basis: 0;">
-                              <at-menu theme="dark" class="flex-fill pt-4 border-0 bg-dark" mode="vertical" :active-name="states.current_channel">
+                              <at-menu width="300px" theme="dark" :class="[ user_options.dark_mode ? 'bg-darker':'bg-dark' ]" class="flex-fill pt-4 border-0" mode="vertical" :active-name="states.current_channel">
                                   <h5 v-if="usersStatus.online.length" class="text-white text-uppercase ls-1 mb-2 pl-32">Online - @{{ usersStatus.online.length }}</h5>
                                   <li class="at-menu__item" v-for="(user, index) in usersStatus.online" :key="user.id" :name="user.username" :class="{ 'mb-2': index == usersStatus.online.length - 1 }">
                                     <div class="at-menu__item-link">
                                         <div class="position-relative" style="overflow: hidden;">
-                                            <status-badge class="border-0 mr-2" theme="dark" :status="user.status">
+                                            <status-badge offset="16px" class="border-0 mr-2" theme="dark" :status="user.status">
                                               <img height="30px" class="rounded-circle" :data-user_id="user.id" :src="'{{ asset('storage/avatars') }}/' + user.id + '.png'">
                                             </status-badge>
                                             <span class="mx-2">@{{ user.username }}</span>
@@ -180,7 +286,7 @@
                                   <li class="at-menu__item" v-for="(user, index) in usersStatus.offline" :key="user.id" :name="user.username" :class="{ 'mb-2': index == usersStatus.offline.length - 1 }">
                                     <div class="at-menu__item-link">
                                         <div class="position-relative" style="overflow: hidden;">
-                                            <status-badge class="border-0 mr-2" theme="dark" :status="user.status">
+                                            <status-badge offset="16px" class="border-0 mr-2" theme="dark" :status="user.status">
                                               <img height="30px" class="rounded-circle" :data-user_id="user.id" :src="'{{ asset('storage/avatars') }}/' + user.id + '.png'">
                                             </status-badge>
                                             <span class="mx-2">@{{ user.username }}</span>

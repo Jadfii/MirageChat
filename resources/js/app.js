@@ -16,6 +16,7 @@ window.autosize = require('autosize');
 window.isOnline = require('is-online');
 window.away = require('away');
 window.Push = require('push.js');
+window.SimplePeer = require('simple-peer');
 import AtComponents from 'at-ui';
 
 /**
@@ -118,6 +119,42 @@ Vue.use(AtComponents);
 // Pass initial state data into a global variable inside app.js file
 var initialState = window.__INITIAL_STATE__;
 
+// Initialise SimplePeer
+var p = null;
+var peers = {};
+var get_stats = null;
+
+// Set ICE servers
+var ICE_SERVERS = [
+  {urls: "stun:stun.l.google.com:19302"},
+  {urls: "stun:global.stun.twilio.com:3478?transport=udp"},
+  {
+    urls: "stun:eu-turn4.xirsys.com",
+    credential: "328950d4-4058-11e9-9516-375204dc2d7f",
+    username: "32895020-4058-11e9-9aaa-164f82c433be",
+  },
+  {
+    urls: "turn:eu-turn4.xirsys.com:80?transport=udp",
+    credential: "328950d4-4058-11e9-9516-375204dc2d7f",
+    username: "32895020-4058-11e9-9aaa-164f82c433be",
+  },
+  {
+    urls: "turn:eu-turn4.xirsys.com:3478?transport=udp",
+    credential: "328950d4-4058-11e9-9516-375204dc2d7f",
+    username: "32895020-4058-11e9-9aaa-164f82c433be",
+  },
+  {
+    urls: "turn:eu-turn4.xirsys.com:80?transport=tcp",
+    credential: "328950d4-4058-11e9-9516-375204dc2d7f",
+    username: "32895020-4058-11e9-9aaa-164f82c433be",
+  },
+  {
+    urls: "turn:eu-turn4.xirsys.com:3478?transport=tcp",
+    credential: "328950d4-4058-11e9-9516-375204dc2d7f",
+    username: "32895020-4058-11e9-9aaa-164f82c433be",
+  },
+]
+
 var throttle = _.throttle((func) => {
   func();
 }, 5000, { 'trailing': false });
@@ -147,11 +184,16 @@ const App = new Vue({
         account: {
           avatar: initialState.avatar,
           avatar_upload: initialState.avatar,
+          username: initialState.current_user.username,
+          email: initialState.current_user.email,
+          password: '',
         },
         settings: {
           display: false,
           account_edit: false,
+          password_edit: false,
           active_tab: 'account_details',
+          options: null,
         },
         current_channel: [],
         modal: {
@@ -175,6 +217,30 @@ const App = new Vue({
           users: [],
           timer: null,
         },
+        voice: {
+          connected: false,
+          initiated: false,
+          channel_id: null,
+          offer: null,
+          answer: null,
+          peers: [],
+          peer_id: null,
+          volume: 100,
+          localStream: null,
+          remoteStream: null,
+          localStats: {
+            active: false,
+            level: null,
+            bytesSent: 0,
+            packetsSent: 0,
+          },
+          remoteStats: {
+            active: false,
+            level: null,
+            bytesSent: 0,
+            packetsSent: 0,
+          }
+        },
         messages: {
           scroll: {
             position: null,
@@ -187,11 +253,18 @@ const App = new Vue({
        create_channel: null,
        edit_message: null,
        edit_channel: null,
+       incoming_call: null,
+       voice_call: null,
+       messages: {
+         calling: null,
+       },
+       enable_2fa: null,
+       remove_2fa: null,
      },
      window: {
        width: window.innerWidth,
        height: window.innerHeight,
-       nav_height: window.innerHeight * 0.06,
+       nav_height: '60',
      },
   },
   created: function() {
@@ -202,7 +275,9 @@ const App = new Vue({
     var App_this = this;
     _.delay(function() {
       App_this.states.loaded = true;
-    }, 4000);
+    }, 5000);
+
+    this.states.settings.options = this.user_options;
 
     // Set current channel to first channel in list
     if (this.channels.length > 0) {
@@ -259,8 +334,18 @@ const App = new Vue({
         if (App_this.states.settings.account_edit) {
           App_this.states.settings.account_edit = false;
         }
+        App_this.states.settings.password_edit = false;
         // Set active tab to first tab
-        App_this.states.settings.active_tab = $('[data-setting]').first().data('setting');
+        App_this.states.settings.active_tab = 'account_details';
+      }, 500);
+    },
+    'states.settings.account_edit': function() {
+      var App_this = this;
+      this.states.settings.password_edit = false;
+      this.states.account.password = '';
+      setTimeout(function() {
+        App_this.states.account.username = App_this.current_user.username;
+        App_this.states.account.email = App_this.current_user.email;
       }, 500);
     },
     'states.current_channel': function() {
@@ -270,6 +355,7 @@ const App = new Vue({
       if (this.unread[this.states.current_channel] > 0) {
         this.readChannel(this.states.current_channel);
       }
+      $('#message_box').find('textarea').focus();
     },
     'states.typing.focused': function() {
       var App_this = this;
@@ -350,6 +436,19 @@ const App = new Vue({
         return this.getMembers(this.findChannel(this.states.current_channel));
       } else {
         return this.users_sorted;
+      }
+    },
+    // Computed to get all users with access to current channel but current user
+    other_active_users: function() {
+      var App_this = this;
+      if (this.active_channel) {
+        return _.reject(this.getMembers(this.findChannel(this.states.current_channel)), function(user) {
+          return user.id == App_this.current_user.id;
+        });
+      } else {
+        return _.reject(this.users_sorted, function(user) {
+          return user.id == App_this.current_user.id;
+        });
       }
     },
     // Set the message for the current typing users
@@ -666,7 +765,6 @@ const App = new Vue({
            if (!App_this.states.production) {
              console.log(response);
            }
-           dialog.close();
          })
          .catch(function (error) {
            if (!App_this.states.production) {
@@ -758,6 +856,35 @@ const App = new Vue({
            }
            _.remove(App_this.messages, function(obj) {
              obj.channel_id == App_this.states.modal.item.channel_id;
+           })
+         })
+         .catch(function (error) {
+           if (!App_this.states.production) {
+             console.log(error);
+           }
+        });
+      })
+      .catch(function () {
+        //
+      });
+    },
+    // Method to allow users to leave channels
+    leaveChannel: function(channel) {
+      var App_this = this;
+
+      this.$Modal.confirm({
+        title: 'Leave channel',
+        content: 'Are you sure you want to leave the channel "' + channel.name + '"?',
+        styles: "{top: '50%', transform: 'translateY(-50%)'}",
+      })
+      .then(function() {
+        axios.put('/api/channels/' + channel.channel_id + '/leave')
+         .then(function (response) {
+           if (!App_this.states.production) {
+             console.log(response);
+           }
+           _.remove(App_this.messages, function(obj) {
+             obj.channel_id == channel.channel_id;
            })
          })
          .catch(function (error) {
@@ -998,6 +1125,8 @@ const App = new Vue({
            console.log(response);
          }
          App_this.states.modal.item = response.data;
+         App_this.states.modal.item.code = '';
+         App_this.modals.enable_2fa = true;
        })
        .catch(function (error) {
          if (!App_this.states.production) {
@@ -1008,73 +1137,85 @@ const App = new Vue({
     // Method to confirm and enable 2fa for current user
     confirm_2fa: function() {
       var App_this = this;
-      var modal = $('#enable-2fa-modal');
-      var verify_code = modal.find("input").val().trim();
-
       axios.post('/2fa/submit', {
-        'verify_code': verify_code,
+        'verify_code': App_this.states.modal.item.code.trim(),
       })
        .then(function (response) {
          if (!App_this.states.production) {
            console.log(response);
          }
-         modal.modal('hide');
-         modal.find("input").val('');
+         App_this.modals.enable_2fa = false;
          Vue.set(App_this.current_user, 'google2fa_secret', response.data.google2fa_secret);
        })
        .catch(function (error) {
          if (!App_this.states.production) {
            console.log(error);
          }
-         modal.find(".form-error").text(error.response.data);
+         App_this.$Modal.alert({
+           title: error.response.data.message,
+           content: Object.values(error.response.data.errors)[0][0],
+           okText: 'Okay',
+           styles: "{top: '50%', transform: 'translateY(-50%)'}",
+           callback: function(action) {
+             //
+           }
+         });
+      })
+      .then(function () {
+        App_this.states.modal.item.code = '';
       });
     },
     // Method to disable 2fa for current user
-    remove_2fa: function() {
+    remove_2fa: function(e) {
       var App_this = this;
-      var modal = $('#remove-2fa-modal');
-      var verify_code = modal.find("input").val().trim();
-
-      axios.post('/2fa/remove', {
-        'verify_code': verify_code,
-      })
-       .then(function (response) {
-         if (!App_this.states.production) {
-           console.log(response);
-         }
-         modal.modal('hide');
-         modal.find("input").val('');
-         Vue.set(App_this.current_user, 'google2fa_secret', response.data.google2fa_secret);
-       })
-       .catch(function (error) {
-         if (!App_this.states.production) {
-           console.log(error);
-         }
-         modal.find(".form-error").text(error.response.data);
-      });
+      if (typeof e !== 'undefined') {
+        this.modals.remove_2fa = true;
+        App_this.states.modal.item = {
+          'code': '',
+        }
+      } else {
+        axios.post('/2fa/remove', {
+          'verify_code': App_this.states.modal.item.code.trim(),
+        })
+         .then(function (response) {
+           if (!App_this.states.production) {
+             console.log(response);
+           }
+           App_this.modals.remove_2fa = false;
+           Vue.set(App_this.current_user, 'google2fa_secret', response.data.google2fa_secret);
+         })
+         .catch(function (error) {
+           if (!App_this.states.production) {
+             console.log(error);
+           }
+           App_this.$Modal.alert({
+             title: error.response.data.message,
+             content: Object.values(error.response.data.errors)[0][0],
+             okText: 'Okay',
+             styles: "{top: '50%', transform: 'translateY(-50%)'}",
+             callback: function(action) {
+               //
+             }
+           });
+        })
+        .then(function () {
+          App_this.states.modal.item.code = '';
+        });
+      }
     },
     // Method to change a user option
-    changeOption: function(e) {
+    changeOption: function(option) {
       var App_this = this;
-      var options = this.user_options;
-      var option = $(e.target).attr('name');
-      if ($(e.target).attr('type') == 'checkbox') {
-        var value = $(e.target)[0].checked;
-      } else {
-        var value = $(e.target).val();
-      }
-
-      options[option] = value;
-      options = JSON.stringify(options);
+      Vue.set(App_this.states.settings.options, option, !App_this.states.settings.options[option]);
 
       axios.post('/api/users/' + App_this.current_user.id, {
-        'options': options,
+        'options': JSON.stringify(App_this.states.settings.options),
       })
        .then(function (response) {
          if (!App_this.states.production) {
            console.log(response);
          }
-         App_this.current_user.options = options;
+         App_this.current_user.options = response.data.options;
        })
        .catch(function (error) {
          if (!App_this.states.production) {
@@ -1091,6 +1232,558 @@ const App = new Vue({
     changeSetting: function(e) {
       var App_this = this;
       this.states.settings.active_tab = this.getSetting(e);
+    },
+    openCall: function(e) {
+      var App_this = this;
+    },
+    // Method to initiate a voice call
+    startCall: function(data) {
+      var App_this = this;
+      var peer = this.findUser(this.states.voice.peer_id);
+      if (typeof peer == 'undefined') {
+        this.$Message.error('Invalid user!');
+        return;
+      }
+
+      if (peer.status == 'offline') {
+        this.$Message.error('That user is offline!');
+        return;
+      }
+
+      App_this.states.voice.peer_id = peer.id;
+
+      var SimplePeer = require('simple-peer');
+      // get video/voice stream
+      navigator.getUserMedia({ audio: true }, gotMedia, function () {});
+
+      function gotMedia(stream) {
+        App_this.states.voice.initiated = typeof data == 'undefined';
+        p = new SimplePeer({
+          initiator: App_this.states.voice.initiated,
+          stream: stream,
+          constraints: {
+            OfferToReceiveVideo: true,
+          },
+          trickle: false,
+          config: {
+            iceServers: ICE_SERVERS,
+          }
+        });
+
+        p.on('error', function(err) {
+          if (!App_this.states.production) {
+            console.log('Error: ', err);
+          }
+        });
+
+        p.on('close', function() {
+          App_this.$Notify({
+            title: 'Voice disconnected',
+            message: 'Voice chat with ' + App_this.findUser(App_this.states.voice.peer_id).username + ' has been ended.',
+            duration: 5000,
+            type: 'info',
+            showClose: false
+          });
+          App_this.endCall();
+        });
+
+        if (App_this.states.voice.initiated) {
+          App_this.modals.messages.calling = App_this.$Message.loading({
+            message: 'Calling ' + App_this.findUser(App_this.states.voice.peer_id).username,
+            duration: 0,
+          });
+        }
+
+        p.on('connect', function() {
+          App_this.states.voice.connected = true;
+          App_this.$Notify({
+            title: 'Voice connected',
+            message: 'Connected to voice chat with ' + App_this.findUser(App_this.states.voice.peer_id).username,
+            duration: 5000,
+            type: 'success',
+            showClose: false
+          });
+          if (App_this.states.voice.initiated) {
+            App_this.modals.messages.calling();
+          }
+
+          App_this.states.voice.localStream = stream;
+          console.log(p);
+
+          $('#mute-self').click(function(e) {
+            console.log(stream.getTracks()[0]);
+            stream.getTracks()[0].enabled = !stream.getTracks()[0].enabled;
+          });
+
+          var vad_options = {
+            minNoiseLevel: 0.1,
+            minCaptureFreq: 40,
+            avgNoiseMultiplier: 1.5,
+          }
+
+          window.AudioContext = window.AudioContext || window.webkitAudioContext;
+          var audioContext_local = new AudioContext();
+          var vad_local = require('voice-activity-detection');
+          var options_local = {
+            ...vad_options,
+            onVoiceStart: function() {
+              App_this.states.voice.localStats.active = true;
+            },
+            onVoiceStop: function() {
+              App_this.states.voice.localStats.active = false;
+            },
+            onUpdate: function(val) {
+              App_this.states.voice.localStats.level = val;
+            }
+          };
+          vad_local(audioContext_local, stream, options_local);
+
+          window.AudioContext = window.AudioContext || window.webkitAudioContext;
+          var audioContext_remote = new AudioContext();
+          var vad_remote = require('voice-activity-detection');
+          var options_remote = {
+            ...vad_options,
+            onVoiceStart: function() {
+              App_this.states.voice.remoteStats.active = true;
+            },
+            onVoiceStop: function() {
+              App_this.states.voice.remoteStats.active = false;
+            },
+            onUpdate: function(val) {
+              App_this.states.voice.remoteStats.level = val;
+            }
+          };
+          var peer_stream = p._remoteStreams[0];
+          vad_remote(audioContext_remote, peer_stream, options_remote);
+
+          get_stats = window.setInterval(() => {
+            p._pc.getSenders()[0].getStats().then(res => {
+              res.forEach(report => {
+                if (report.type === 'outbound-rtp') {
+                  if (report.isRemote) {
+                    return;
+                  }
+
+                  App_this.states.voice.localStats.bytesSent = report.bytesSent;
+                  App_this.states.voice.localStats.packetsSent = report.packetsSent;
+                }
+              });
+            });
+            p._pc.getReceivers()[0].getStats().then(res => {
+              res.forEach(report => {
+                if (report.type === 'outbound-rtp') {
+                  if (report.isRemote) {
+                    return;
+                  }
+
+                  App_this.states.voice.remoteStats.bytesSent = report.bytesSent;
+                  App_this.states.voice.remoteStats.packetsSent = report.packetsSent;
+                }
+              });
+            });
+          }, 3000);
+        });
+
+        p.on('signal', function(data) {
+          if (data.type == 'offer') {
+            window['channel_'+App_this.states.current_channel.toString()].whisper('client-signal-' + App_this.states.voice.peer_id, {
+              user_id: App_this.current_user.id,
+              data: data,
+            });
+            App_this.states.voice.offer = JSON.stringify(data);
+          }
+          if (data.type == 'answer') {
+            App_this.states.voice.answer = JSON.stringify(data);
+            if (!App_this.states.voice.initiated) {
+              window['channel_'+App_this.states.current_channel.toString()].whisper('client-signal-' + App_this.states.voice.peer_id, {
+                user_id: App_this.current_user.id,
+                data: data,
+              });
+            }
+          }
+          console.log('SIGNAL - '+JSON.stringify(data));
+        });
+
+        p.on('stream', function(peer_stream) {
+          var call = document.querySelector('#voice_call');
+          call.srcObject = peer_stream;
+          call.play();
+        });
+
+        if (!App_this.states.voice.initiated) {
+          p.signal(data);
+        }
+      }
+    },
+    endCall: function(e) {
+      if (typeof p !== 'undefined') {
+        p.destroy();
+        this.states.voice.connected = false;
+        if (typeof this.modals.messages.calling == 'function') {
+          this.modals.messages.calling();
+        }
+        clearInterval(get_stats);
+      }
+    },
+    muteCall: function(e) {
+      document.querySelector('#voice_call').muted = !document.querySelector('#voice_call').muted;
+    },
+    muteMicrophone: function(e) {
+      this.states.voice.localStream.active = !this.states.voice.localStream.active;
+    },
+    acceptCall: function(e) {
+      console.log('ACCEPT');
+      this.modals.incoming_call = false;
+      document.getElementById('incoming_call').pause();
+      document.getElementById('incoming_call').currentTime = 0;
+      this.startCall(this.states.voice.offer);
+    },
+    declineCall: function(e) {
+      var App_this = this;
+      console.log('DECLINE');
+      this.modals.incoming_call = false;
+      document.getElementById('incoming_call').pause();
+      document.getElementById('incoming_call').currentTime = 0;
+      window['channel_'+App_this.states.current_channel.toString()].whisper('client-signal-' + App_this.states.voice.peer_id, {
+        user_id: App_this.current_user.id,
+        data: 'decline',
+      });
+    },
+    joinVoiceChannel: function(channel_id) {
+      var App_this = this;
+      var SimplePeer = require('simple-peer');
+
+      App_this.states.voice.channel_id = channel_id;
+
+      // get video/voice stream
+      navigator.getUserMedia({ audio: true }, gotMedia, function () {});
+
+      function gotMedia(stream) {
+        window['channel_' + channel_id.toString() + '_voice'] = Echo.join('voice.' + channel_id)
+        .here((users) => {
+          users.forEach(function(user, index) {
+            if (!_.has(peers, user.id) && App_this.current_user.id !== user.id) {
+              var peer = new SimplePeer({
+                initiator: true,
+                stream: stream,
+                constraints: {
+                  OfferToReceiveVideo: true,
+                },
+                trickle: false,
+                config: {
+                  iceServers: ICE_SERVERS,
+                }
+              });
+
+              peers[user.id] = peer;
+              App_this.states.voice.peers.push({
+                'user_id': user.id,
+                'offer': null,
+                'answer': null,
+                'stream': null,
+                'volume': null,
+              });
+
+              App_this.modals.messages.calling = App_this.$Message.loading({
+                message: 'Connecting',
+                duration: 0,
+              });
+
+              peer.on('error', function(err) {
+                if (!App_this.states.production) {
+                  console.log('Error: ', err);
+                }
+              });
+
+              peer.on('close', function() {
+                App_this.$Notify({
+                  title: 'Voice disconnected',
+                  message: 'Left voice channel '+App_this.findChannel(App_this.states.voice.channel_id).name,
+                  duration: 5000,
+                  type: 'info',
+                  showClose: false
+                });
+                App_this.leaveVoiceChannel();
+              });
+
+              peer.on('connect', function() {
+                App_this.states.voice.connected = true;
+                App_this.$Notify({
+                  title: 'Voice connected',
+                  message: 'Connected to voice chat',
+                  duration: 5000,
+                  type: 'success',
+                  showClose: false
+                });
+                App_this.modals.messages.calling();
+
+                App_this.states.voice.localStream = stream;
+
+                $('#mute-self').click(function(e) {
+                  console.log(stream.getTracks()[0]);
+                  stream.getTracks()[0].enabled = !stream.getTracks()[0].enabled;
+                });
+
+                var vad_options = {
+                  minNoiseLevel: 0.1,
+                  minCaptureFreq: 40,
+                  avgNoiseMultiplier: 1.5,
+                }
+
+                window.AudioContext = window.AudioContext || window.webkitAudioContext;
+                var audioContext_local = new AudioContext();
+                var vad_local = require('voice-activity-detection');
+                var options_local = {
+                  ...vad_options,
+                  onVoiceStart: function() {
+                    App_this.states.voice.localStats.active = true;
+                  },
+                  onVoiceStop: function() {
+                    App_this.states.voice.localStats.active = false;
+                  },
+                  onUpdate: function(val) {
+                    App_this.states.voice.localStats.level = val;
+                  }
+                };
+                vad_local(audioContext_local, stream, options_local);
+
+                get_stats = window.setInterval(() => {
+                  if (_.has(peers, user.id)) {
+                    peers[user.id]._pc.getSenders()[0].getStats().then(res => {
+                      res.forEach(report => {
+                        if (report.type === 'outbound-rtp') {
+                          if (report.isRemote) {
+                            return;
+                          }
+
+                          App_this.states.voice.localStats.bytesSent = report.bytesSent;
+                          App_this.states.voice.localStats.packetsSent = report.packetsSent;
+                        }
+                      });
+                    });
+                  }
+                }, 3000);
+              });
+
+              peer.on('signal', function(data) {
+                if (data.type == 'offer') {
+                  window['channel_'+App_this.states.voice.channel_id.toString() + '_voice'].whisper('client-signal-' + user.id, {
+                    user_id: App_this.current_user.id,
+                    peer_id: user.id,
+                    data: data,
+                  });
+                  if (typeof App_this.states.voice.peers[user.id] !== 'undefined') {
+                    Vue.set(App_this.states.voice.peers[user.id], 'offer', JSON.stringify(data));
+                  }
+                }
+                if (data.type == 'answer') {
+                  if (typeof App_this.states.voice.peers[user.id] !== 'undefined') {
+                    Vue.set(App_this.states.voice.peers[user.id], 'answer', JSON.stringify(data));
+                  }
+                  if (!App_this.states.voice.initiated) {
+                    window['channel_'+App_this.states.voice.channel_id.toString() + '_voice'].whisper('client-signal-' + user.id, {
+                      user_id: App_this.current_user.id,
+                      peer_id: user.id,
+                      data: data,
+                    });
+                  }
+                }
+                console.log('SIGNAL - '+JSON.stringify(data));
+              });
+
+              peer.on('stream', function(peer_stream) {
+                var call = document.querySelector('#voice_channel_user-' + user.id);
+                call.srcObject = peer_stream;
+                call.play();
+              });
+
+              if (App_this.current_user.id == user.id) {
+                peer.signal(data);
+              }
+            }
+          });
+        })
+        .joining((user) => {
+          App_this.states.voice.peers.push({
+            'user_id': user.id,
+            'offer': null,
+            'answer': null,
+            'stream': null,
+            'volume': null,
+          });
+
+          if (!_.has(peers, user.id) && App_this.current_user.id !== user.id) {
+            var peer = new SimplePeer({
+              initiator: false,
+              stream: stream,
+              constraints: {
+                OfferToReceiveVideo: true,
+              },
+              trickle: false,
+              config: {
+                iceServers: ICE_SERVERS,
+              }
+            });
+
+            peers[user.id] = peer;
+
+            App_this.modals.messages.calling = App_this.$Message.loading({
+              message: 'Connecting',
+              duration: 0,
+            });
+
+            peer.on('error', function(err) {
+              if (!App_this.states.production) {
+                console.log('Error: ', err);
+              }
+            });
+
+            peer.on('close', function() {
+              App_this.$Notify({
+                title: 'Voice disconnected',
+                message: 'Left voice channel '+App_this.findChannel(App_this.states.voice.channel_id).name,
+                duration: 5000,
+                type: 'info',
+                showClose: false
+              });
+              App_this.leaveVoiceChannel();
+            });
+
+            peer.on('connect', function() {
+              App_this.states.voice.connected = true;
+              App_this.$Notify({
+                title: 'Voice connected',
+                message: 'Connected to voice chat',
+                duration: 5000,
+                type: 'success',
+                showClose: false
+              });
+              App_this.modals.messages.calling();
+
+              App_this.states.voice.localStream = stream;
+
+              $('#mute-self').click(function(e) {
+                console.log(stream.getTracks()[0]);
+                stream.getTracks()[0].enabled = !stream.getTracks()[0].enabled;
+              });
+
+              var vad_options = {
+                minNoiseLevel: 0.1,
+                minCaptureFreq: 40,
+                avgNoiseMultiplier: 1.5,
+              }
+
+              window.AudioContext = window.AudioContext || window.webkitAudioContext;
+              var audioContext_local = new AudioContext();
+              var vad_local = require('voice-activity-detection');
+              var options_local = {
+                ...vad_options,
+                onVoiceStart: function() {
+                  App_this.states.voice.localStats.active = true;
+                },
+                onVoiceStop: function() {
+                  App_this.states.voice.localStats.active = false;
+                },
+                onUpdate: function(val) {
+                  App_this.states.voice.localStats.level = val;
+                }
+              };
+              vad_local(audioContext_local, stream, options_local);
+
+              get_stats = window.setInterval(() => {
+                if (_.has(peers, user.id)) {
+                  peers[user.id]._pc.getSenders()[0].getStats().then(res => {
+                    res.forEach(report => {
+                      if (report.type === 'outbound-rtp') {
+                        if (report.isRemote) {
+                          return;
+                        }
+
+                        App_this.states.voice.localStats.bytesSent = report.bytesSent;
+                        App_this.states.voice.localStats.packetsSent = report.packetsSent;
+                      }
+                    });
+                  });
+                }
+              }, 3000);
+            });
+
+            peer.on('signal', function(data) {
+              if (data.type == 'offer') {
+                window['channel_'+App_this.states.voice.channel_id.toString() + '_voice'].whisper('client-signal-' + user.id, {
+                  user_id: App_this.current_user.id,
+                  peer_id: user.id,
+                  data: data,
+                });
+                if (typeof App_this.states.voice.peers[user.id] !== 'undefined') {
+                  Vue.set(App_this.states.voice.peers[user.id], 'offer', JSON.stringify(data));
+                }
+              }
+              if (data.type == 'answer') {
+                if (typeof App_this.states.voice.peers[user.id] !== 'undefined') {
+                  Vue.set(App_this.states.voice.peers[user.id], 'answer', JSON.stringify(data));
+                }
+                if (!App_this.states.voice.initiated) {
+                  window['channel_'+App_this.states.voice.channel_id.toString() + '_voice'].whisper('client-signal-' + user.id, {
+                    user_id: App_this.current_user.id,
+                    peer_id: user.id,
+                    data: data,
+                  });
+                }
+              }
+              console.log('SIGNAL - '+JSON.stringify(data));
+            });
+
+            peer.on('stream', function(peer_stream) {
+              var call = document.querySelector('#voice_channel_user-' + user.id);
+              call.srcObject = peer_stream;
+              call.play();
+            });
+
+            if (App_this.current_user.id == user.id) {
+              peer.signal(data);
+            }
+          }
+        })
+        .leaving((user) => {
+          App_this.states.voice.peers.splice(App_this.states.voice.peers.findIndex(u => u.user_id == user.id), 1);
+        });
+
+        window['channel_' + App_this.states.voice.channel_id.toString() + '_voice']
+        .listenForWhisper('client-signal-' + App_this.current_user.id, (e) => {
+          if (!App_this.states.production) {
+            console.log(e);
+          }
+
+          if (e.peer_id == App_this.current_user.id) {
+            if (e.data.type == 'offer') {
+              App_this.states.voice.peers[App_this.states.voice.peers.findIndex(u => u.user_id == e.user_id)].offer = e.data;
+              if (typeof peers[e.user_id] !== 'undefined') {
+                peers[e.user_id].signal(e.data);
+              }
+            } else if (e.data.type == 'answer') {
+              App_this.states.voice.peers[App_this.states.voice.peers.findIndex(u => u.user_id == e.user_id)].answer = e.data;
+              if (typeof peers[e.user_id] !== 'undefined') {
+                peers[e.user_id].signal(e.data);
+              }
+            }
+          }
+        });
+      }
+    },
+    leaveVoiceChannel: function(channel_id) {
+      var App_this = this;
+
+      Echo.leave('voice.' + channel_id);
+      console.log(peers);
+      _.each(peers, function(peer) {
+        peer.destroy();
+        App_this.states.voice.connected = false;
+        if (typeof App_this.modals.messages.calling == 'function') {
+          App_this.modals.messages.calling();
+        }
+        clearInterval(get_stats);
+      });
     },
   },
 });
@@ -1283,16 +1976,19 @@ if (App.logged_in && document.getElementById('messages')) {
         }
         Vue.set(App.users, App.users.findIndex((user_find => user_find.id == e.user.id)), e.user);
         var src = $("[data-user_id='" + e.user.id + "']").attr('src');
-        if (src && src.indexOf('?') > 0) {
-          src = src.substring(0, src.indexOf('?')) + '?' + Date.now();
-        } else {
-          src = src + '?' + Date.now();
-        }
-        $("[data-user_id='" + e.user.id + "']").attr('src', src);
-        if (e.user.id == App.current_user.id) {
-          App.current_user.status = e.user.status;
-          App.current_user.username = e.user.username;
-          App.states.account.avatar = src;
+        if (src) {
+          if (src.indexOf('?') > 0) {
+            src = src.substring(0, src.indexOf('?')) + '?' + Date.now();
+          } else {
+            src = src + '?' + Date.now();
+          }
+
+          $("[data-user_id='" + e.user.id + "']").attr('src', src);
+          if (e.user.id == App.current_user.id) {
+            App.current_user.status = e.user.status;
+            App.current_user.username = e.user.username;
+            App.states.account.avatar = src;
+          }
         }
      });
 
@@ -1344,6 +2040,36 @@ if (App.logged_in && document.getElementById('messages')) {
        // Join private channel through Laravel Echo
        listenToChannel(App.channels[key].channel_id);
      });
+
+     if (typeof window['channel_' + App.states.current_channel.toString()] !== 'undefined') {
+       window['channel_' + App.states.current_channel.toString()]
+       .listenForWhisper('client-signal-' + App.current_user.id, (e) => {
+         if (!App.states.production) {
+           console.log(e);
+         }
+
+         if (e.data == 'decline') {
+           p.destroy();
+           App.$Message.info('Your call was declined');
+           App.modals.messages.calling();
+           return;
+         }
+
+         if (e.data.type == 'offer') {
+           App.states.voice.offer = JSON.stringify(e.data);
+           App.states.voice.peer_id = e.user_id;
+           App.states.voice.initiated = false;
+
+           document.getElementById('incoming_call').play();
+
+           App.modals.incoming_call = true;
+         } else if (e.data.type == 'answer') {
+           if (typeof p !== 'undefined') {
+             p.signal(e.data);
+           }
+         }
+       });
+     }
 }
 
 // Listen to key events on window
@@ -1381,6 +2107,11 @@ $(document).on("click", '[data-toggle="popover"]', function(e) {
 // Ensure tooltips are closed when the toggle element is clicked
 $(document).on("mouseleave click", '[data-toggle="tooltip"]', function(e) {
   $(".tooltip").tooltip("hide");
+});
+
+// Fix positioning for some tooltips with data-offset-tooltip
+$(document).on("mouseenter", '[data-toggle="tooltip"]', function(e) {
+  $(".tooltip").css('left', $(this).data('offset-tooltip'));
 });
 
 // Allow floating labels on input boxes

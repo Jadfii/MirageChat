@@ -37,7 +37,7 @@ class Google2FAController extends Controller
       if ($google2fa->verifyKey($user->google2fa_secret, $token)) {
           $request->session()->remove('2fa:user:id');
 
-          auth()->loginUsingId($user->id);
+          auth()->loginUsingId($user->id, true);
           return redirect('/');
       }
       return redirect('/login/auth')->withErrors(['error' => __('Invalid Code')]);
@@ -79,14 +79,24 @@ class Google2FAController extends Controller
       // Initialise the 2FA class
       $google2fa = app('pragmarx.google2fa');
 
-      if ($google2fa->verifyKey(session('google_2fa_secret_key'), $request->input('verify_code'))) {
-        $user->google2fa_secret = session('google_2fa_secret_key');
-        $user->save();
+      $request->validate([
+        'verify_code' => [
+          'required',
+          'string',
+          'min:1',
+          function ($attribute, $value, $fail) use ($google2fa, $request) {
+            if (!$google2fa->verifyKey(session('google_2fa_secret_key'), $request->input('verify_code'))) {
+              $request->session()->reflash();
+              $fail('Invalid Verification Code.');
+            }
+          },
+        ]
+      ]);
 
-        return response()->json($user, 201);
-      } else {
-        return response()->json("Invalid Verification Code", 400);
-      }
+      $user->google2fa_secret = session('google_2fa_secret_key');
+      $user->save();
+
+      return response()->json($user, 201);
   }
 
   public function remove(Request $request)
@@ -99,13 +109,23 @@ class Google2FAController extends Controller
       // Initialise the 2FA class
       $google2fa = app('pragmarx.google2fa');
 
-      if ($google2fa->verifyKey($user->google2fa_secret, $request->input('verify_code'))) {
-        $user->google2fa_secret = null;
-        $user->save();
+      $request->validate([
+        'verify_code' => [
+          'required',
+          'string',
+          'min:1',
+          function ($attribute, $value, $fail) use ($google2fa, $request, $user) {
+            if (!$google2fa->verifyKey($user->google2fa_secret, $request->input('verify_code'))) {
+              $request->session()->reflash();
+              $fail('Invalid Verification Code.');
+            }
+          },
+        ]
+      ]);
 
-        return response()->json($user, 201);
-      } else {
-        return response()->json("Invalid Authentication Code", 400);
-      }
+      $user->google2fa_secret = null;
+      $user->save();
+
+      return response()->json($user, 201);
   }
 }
