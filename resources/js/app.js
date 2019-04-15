@@ -798,6 +798,22 @@ const App = new Vue({
         //
       });
     },
+    // Method to handle file drag
+    handleDrag: function(e) {
+      if (!this.states.settings.display) {
+        if (e.type == 'dragover' || e.type == 'dragenter') {
+          e.preventDefault();
+          this.modals.files.drag = true;
+          this.states.upload_area = true;
+        } else if (e.type == 'dragleave') {
+          this.modals.files.drag = false;
+          this.states.upload_area = false;
+        } else if (e.type == 'drop') {
+          e.preventDefault();
+          this.uploadFile(e);
+        }
+      }
+    },
     // Method to upload a file
     uploadFile: function(e) {
       var App_this = this;

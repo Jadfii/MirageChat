@@ -45,7 +45,7 @@
     <link href="{{ asset('css/app.css') }}" rel="stylesheet">
 </head>
 <body>
-    <div class="app-container" :class="{ 'dark-mode': user_options && user_options.dark_mode }" id="app" @dragenter="modals.files.drag = true; states.upload_area = true;" @dragleave="modals.files.drag = false; states.upload_area = false;" @dragover.prevent="modals.files.drag = true; states.upload_area = true;" @drop.prevent="uploadFile">
+    <div class="app-container" :class="{ 'dark-mode': user_options && user_options.dark_mode }" id="app" @dragenter="handleDrag" @dragleave="handleDrag" @dragover="handleDrag" @drop="handleDrag">
         @if (Auth::guest() or !Auth()->user()->email_verified_at)
             <main>
               <div class="container-fluid px-0 h-100">
