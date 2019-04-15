@@ -19,6 +19,9 @@ class MessageAuth
   public function handle($request, Closure $next, $permissions)
   {
       $user = $request->user();
+      if ($user == null) {
+        abort(403, "Unauthorised action");
+      }
       $id = $request->message->message_id;
       $message = Message::where('message_id', $id)->first();
       $permissions = explode('|', $permissions);
