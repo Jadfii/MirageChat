@@ -16,6 +16,11 @@
   box-shadow: none !important;
 }
 
+// Disable video fullscreen button
+video::-webkit-media-controls-fullscreen-button {
+  display: none !important;
+}
+
 h6 {
   font-size: 12px;
 }

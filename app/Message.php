@@ -20,7 +20,7 @@ class Message extends Model
    * @var array
    */
   protected $fillable = [
-    'content', 'read_by', 'user_id', 'channel_id'
+    'content', 'files', 'read_by', 'user_id', 'channel_id'
   ];
 
   /**
@@ -38,7 +38,7 @@ class Message extends Model
    * @var array
    */
   public static $viewable = [
-      'message_id', 'user_id', 'channel_id', 'content', 'created_at'
+      'message_id', 'user_id', 'channel_id', 'content', 'files', 'created_at'
   ];
 
   /**
