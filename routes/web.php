@@ -23,10 +23,6 @@ Route::get('/login/auth', 'Google2FAController@index');
 
 Route::post('/webhooks/users/status', 'UserController@status_web');
 
-
-Route::get('/home', function () {
-    return redirect('/');
-});
 Route::get('/', 'HomeController@index')->name('home')->middleware(['verified']);
 
 Auth::routes(['verify' => true]);
